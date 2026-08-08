@@ -1,6 +1,0 @@
-import torch
-import mne
-import numpy
-import pandas
-
-print("Everything is working!")
