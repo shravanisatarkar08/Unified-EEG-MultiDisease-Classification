@@ -216,3 +216,16 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+# Raw EEG datasets - keep locally, do not push to GitHub
+datasets/raw/
+
+# Processed/intermediate EEG data
+datasets/interim/
+datasets/processed/
+
+# Python virtual environment
+venv/
+
+# Python cache
+__pycache__/
+*.pyc
