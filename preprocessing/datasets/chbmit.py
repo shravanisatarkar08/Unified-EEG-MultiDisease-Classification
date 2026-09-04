@@ -22,13 +22,11 @@ import logging
 import numpy as np
 import mne
 
-import sys
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from config import (TARGET_SRATE, WINDOW_SEC, OVERLAP, WINDOW_SAMPLES,
+from ..config import (TARGET_SRATE, WINDOW_SEC, OVERLAP, WINDOW_SAMPLES,
                      N_CHANNELS, DATASET_PATHS, DATASET_OUTPUT, L_FREQ, H_FREQ)
-from segment import segment_continuous, segment_labeled
-from metadata import WindowMetadata, save_metadata, append_metadata
-from common import normalize_windows
+from ..segment import segment_continuous, segment_labeled
+from ..metadata import WindowMetadata, save_metadata, append_metadata
+from ..common import normalize_windows
 
 logger = logging.getLogger(__name__)
 
