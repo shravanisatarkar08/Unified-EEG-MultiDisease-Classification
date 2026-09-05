@@ -373,3 +373,96 @@ Unified-EEG-MultiDisease-Classification/
         ├── modma.py        # MODMA depression stub (blocker documented)
         └── tuab.py         # TUAB stub (unavailable)
 ```
+
+---
+
+## Prototype Demo UI
+
+An interactive browser-based faculty demonstration application is provided using Streamlit:
+
+```bash
+pip install -r requirements.txt
+streamlit run app/app.py
+```
+
+### What the Prototype Demonstrates:
+1. **EEG Input & Metadata:** Real EDF file loading (MNE), duration, sampling rate, channels count, and seizure event annotations.
+2. **Raw EEG Waveform Visualization:** Multi-channel plotting of raw brain signal rhythms.
+3. **Harmonization & Preprocessing:** 0.5–45 Hz bandpass filtering, 50/60 Hz notch filtering, channel reordering (19-channel standard / bipolar), and 256 Hz resampling.
+4. **Segmentation & Windowing:** 5-second overlapping window creation `[19 × 1280]`, window counts, and seizure vs. non-seizure segment breakdown.
+5. **CNN Feature Extractor Forward Pass:** Real PyTorch tensor forward pass `[1, 19, 1280] → [1, 40, 64]` extracting temporal-spatial feature sequence.
+6. **Transformer Encoder Forward Pass:** Real PyTorch forward pass with CLS token prepending, sinusoidal positional encoding, and multi-head self-attention `[1, 40, 64] → [1, 2]`.
+7. **Unified Multi-Disease Architecture:** Overview of CHB-MIT (Epilepsy), ds004504 (Alzheimer's), ds004584 (Parkinson's), MODMA (Depression), and TUAB (Abnormal/Normal).
+8. **Grad-CAM Explainability Preview:** Architectural placement for upcoming spatio-temporal gradient visualization.
+
+> **Honest Scientific Disclosure:** The prototype demonstrates the full PyTorch tensor pipeline (`EEG -> CNN -> Transformer -> Logits`). Weights are initialized architecture parameters; full multi-epoch backpropagation training is the next project stage. No fake disease predictions or accuracy metrics are generated.
+
+---
+
+## How to Run
+
+### Prerequisites
+
+```bash
+pip install torch --index-url https://download.pytorch.org/whl/cpu
+pip install mne numpy scipy pandas scikit-learn einops tqdm
+```
+
+### Run Smoke Tests
+
+```bash
+python test_pipeline.py
+```
+
+Expected output:
+
+```
+Ran 23 tests in ~0.4s
+
+OK
+```
+
+### Compile All Modules
+
+```bash
+python -m compileall preprocessing models
+```
+
+### Run CHB-MIT Preprocessing (requires local EDF files)
+
+```bash
+python -m preprocessing.datasets.chbmit
+```
+
+Data must be at `datasets/raw/epilepsy/` with `chbXX-summary.txt` files.
+
+### Run Alzheimer's Preprocessing (requires local dataset)
+
+```bash
+python -m preprocessing.datasets.alzheimers
+```
+
+Data must be at `datasets/raw/alzheimers/` in BIDS format with `participants.tsv`.
+
+---
+
+## Dataset Rules (Enforced)
+
+- CHB-MIT non-seizure recordings are labeled `non_seizure` (epilepsy interictal), **NOT healthy controls**
+- Alzheimer's ds004504: AD + Healthy only. FTD is **explicitly excluded**
+- Labels are derived from actual dataset metadata only — no invented labels
+- No metrics are reported from un-trained models
+
+---
+
+## Requirements
+
+See `requirements.txt` for full dependency list.
+
+Key dependencies:
+- PyTorch 2.x (CPU)
+- MNE-Python 1.x
+- NumPy, SciPy, pandas, scikit-learn
+
+> Note: pyEDFlib requires Microsoft Visual C++ build tools on Windows. MNE-Python's built-in EDF reader is used instead.
+>>>>>>> b05c0a7 (feat: add Streamlit faculty prototype UI)
