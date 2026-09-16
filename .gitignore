@@ -229,3 +229,9 @@ venv/
 # Python cache
 __pycache__/
 *.pyc
+datasets/raw/
+datasets/interim/
+datasets/processed/
+
+.ipynb_checkpoints/
+tempCodeRunnerFile.*
