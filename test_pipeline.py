@@ -1,4 +1,4 @@
-﻿"""
+"""
 test_pipeline.py - Smoke test suite for the Unified EEG Multi-Disease Classification pipeline.
 
 Tests covered:
@@ -278,6 +278,49 @@ Number of Seizures in File: 0
             os.unlink(tmp_path)
 
 
+class TestValidateDatasets(unittest.TestCase):
+    def test_validate_datasets_import(self):
+        from preprocessing.validate_datasets import DatasetValidator, EDFFormatReader, EEGLABFormatReader, run_validation
+        self.assertTrue(callable(run_validation))
+        self.assertTrue(hasattr(DatasetValidator, 'validate_all'))
+
+    def test_validate_all_execution(self):
+        from preprocessing.validate_datasets import DatasetValidator
+        validator = DatasetValidator()
+        result = validator.validate_all()
+        self.assertIn('dataset_reports', result)
+        self.assertIn('all_recordings', result)
+        
+        # Verify dataset reports exist
+        ds_map = {r['name']: r for r in result['dataset_reports']}
+        self.assertIn('chbmit', ds_map)
+        self.assertIn('srm_healthy', ds_map)
+        self.assertIn('modma', ds_map)
+        
+        # Verify status reporting
+        self.assertEqual(ds_map['chbmit']['status'], 'AVAILABLE')
+        self.assertEqual(ds_map['srm_healthy']['status'], 'AVAILABLE')
+        self.assertEqual(ds_map['modma']['status'], 'NOT AVAILABLE LOCALLY')
+
+    def test_inventory_csv_export(self):
+        import csv
+        from preprocessing.validate_datasets import DatasetValidator
+        validator = DatasetValidator()
+        summary = validator.validate_all()
+        csv_path = validator.export_inventory_csv(summary['all_recordings'])
+        self.assertTrue(csv_path.exists())
+        
+        with open(csv_path, 'r', encoding='utf-8') as f:
+            reader = csv.DictReader(f)
+            rows = list(reader)
+            self.assertGreater(len(rows), 0)
+            first_row = rows[0]
+            self.assertIn('dataset_name', first_row)
+            self.assertIn('file_path', first_row)
+            self.assertIn('srate_hz', first_row)
+            self.assertIn('n_channels', first_row)
+
+
 if __name__ == '__main__':
     # Run with verbose output
     loader = unittest.TestLoader()
@@ -285,3 +328,4 @@ if __name__ == '__main__':
     runner = unittest.TextTestRunner(verbosity=2)
     result = runner.run(suite)
     sys.exit(0 if result.wasSuccessful() else 1)
+
