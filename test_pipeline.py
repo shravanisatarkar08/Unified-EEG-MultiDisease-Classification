@@ -506,6 +506,97 @@ class TestEEGHarmonization(unittest.TestCase):
             self.assertEqual(w.class_category, 'healthy')
 
 
+class TestDatasetSplit(unittest.TestCase):
+    def test_class_to_idx_mapping(self):
+        from preprocessing.dataset_split import CLASS_TO_IDX, IDX_TO_CLASS
+        expected_mapping = {
+            'healthy': 0,
+            'epilepsy': 1,
+            'alzheimers': 2,
+            'parkinsons': 3,
+            'depression': 4
+        }
+        self.assertEqual(CLASS_TO_IDX, expected_mapping)
+        for cls, idx in expected_mapping.items():
+            self.assertEqual(IDX_TO_CLASS[idx], cls)
+
+    def test_subject_level_splitting_and_zero_leakage(self):
+        from preprocessing.dataset_split import SubjectLevelSplitter
+        splitter = SubjectLevelSplitter(train_ratio=0.70, val_ratio=0.15, test_ratio=0.15, random_seed=42)
+        subjects_df = splitter.load_valid_subjects()
+        assignments = splitter.split_subjects(subjects_df)
+
+        # 1. Verify zero leakage (no subject in multiple splits)
+        splitter.verify_zero_leakage(assignments)
+
+        # 2. Check overlap sets explicitly
+        train_keys = set((a.dataset_name, a.subject_id) for a in assignments if a.split == 'train')
+        val_keys = set((a.dataset_name, a.subject_id) for a in assignments if a.split == 'val')
+        test_keys = set((a.dataset_name, a.subject_id) for a in assignments if a.split == 'test')
+
+        self.assertEqual(len(train_keys.intersection(val_keys)), 0)
+        self.assertEqual(len(train_keys.intersection(test_keys)), 0)
+        self.assertEqual(len(val_keys.intersection(test_keys)), 0)
+
+    def test_reproducibility(self):
+        from preprocessing.dataset_split import SubjectLevelSplitter
+        splitter1 = SubjectLevelSplitter(random_seed=42)
+        subjs1 = splitter1.load_valid_subjects()
+        ass1 = splitter1.split_subjects(subjs1)
+
+        splitter2 = SubjectLevelSplitter(random_seed=42)
+        subjs2 = splitter2.load_valid_subjects()
+        ass2 = splitter2.split_subjects(subjs2)
+
+        keys1 = [(a.dataset_name, a.subject_id, a.split) for a in ass1]
+        keys2 = [(a.dataset_name, a.subject_id, a.split) for a in ass2]
+        self.assertEqual(keys1, keys2)
+
+    def test_ftd_exclusion(self):
+        from preprocessing.dataset_split import SubjectLevelSplitter, EXCLUDED_CLASSES
+        splitter = SubjectLevelSplitter()
+        subjects_df = splitter.load_valid_subjects()
+        assignments = splitter.split_subjects(subjects_df)
+
+        for a in assignments:
+            self.assertNotIn(a.class_category, EXCLUDED_CLASSES)
+
+    def test_model_window_index_generation(self):
+        from preprocessing.dataset_split import SubjectLevelSplitter, build_model_window_index, export_model_index_csv
+        from preprocessing.harmonization import run_controlled_sample_harmonization
+
+        splitter = SubjectLevelSplitter()
+        subjs_df = splitter.load_valid_subjects()
+        assignments = splitter.split_subjects(subjs_df)
+
+        sample_windows = run_controlled_sample_harmonization()
+        index_rows = build_model_window_index(assignments, sample_windows)
+        self.assertGreater(len(index_rows), 0)
+
+        first_row = index_rows[0]
+        self.assertIn(first_row.split, ['train', 'val', 'test'])
+        self.assertIn(first_row.class_label_idx, [0, 1, 2, 3, 4])
+        self.assertEqual(first_row.sampling_rate, 256.0)
+        self.assertEqual(first_row.n_channels, 19)
+        self.assertEqual(first_row.n_samples, 1280)
+
+        out_csv = export_model_index_csv(index_rows)
+        self.assertTrue(out_csv.exists())
+
+    def test_unavailable_depression_handling(self):
+        from preprocessing.dataset_split import SubjectLevelSplitter, CLASS_TO_IDX
+        splitter = SubjectLevelSplitter()
+        subjects_df = splitter.load_valid_subjects()
+        assignments = splitter.split_subjects(subjects_df)
+
+        # Verify depression key exists in CLASS_TO_IDX with index 4
+        self.assertEqual(CLASS_TO_IDX['depression'], 4)
+
+        # Verify no depression subjects assigned in local split
+        dep_assignments = [a for a in assignments if a.class_category == 'depression']
+        self.assertEqual(len(dep_assignments), 0)
+
+
 if __name__ == '__main__':
     # Run with verbose output
     loader = unittest.TestLoader()
