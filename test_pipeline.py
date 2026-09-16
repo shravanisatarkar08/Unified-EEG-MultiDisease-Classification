@@ -321,6 +321,98 @@ class TestValidateDatasets(unittest.TestCase):
             self.assertIn('n_channels', first_row)
 
 
+class TestDatasetPreprocessors(unittest.TestCase):
+    def test_synthetic_eeg_preprocessing(self):
+        import mne
+        from preprocessing.dataset_preprocessors import BaseDatasetPreprocessor, DatasetPreprocessorConfig
+        
+        # Create synthetic MNE Raw object (8 channels, 1000 Hz, 5 seconds)
+        srate = 1000.0
+        n_channels = 8
+        n_samples = int(srate * 5)
+        data = np.random.randn(n_channels, n_samples).astype(np.float64)
+        ch_names = [f"EEG_{i+1}" for i in range(n_channels)]
+        info = mne.create_info(ch_names=ch_names, sfreq=srate, ch_types='eeg')
+        raw = mne.io.RawArray(data, info, verbose=False)
+        
+        config = DatasetPreprocessorConfig(
+            dataset_name='synthetic',
+            target_srate_hz=500.0,
+            l_freq=0.5,
+            h_freq=45.0,
+            notch_freqs=[50.0],
+            rereference_mode='average'
+        )
+        preprocessor = BaseDatasetPreprocessor(config)
+        processed = preprocessor.preprocess_raw_object(
+            raw=raw,
+            dataset_name='synthetic',
+            class_category='test',
+            subject_id='sub-synth',
+            file_path='synth.edf'
+        )
+        
+        self.assertEqual(processed.dataset_name, 'synthetic')
+        self.assertEqual(processed.srate_hz, 500.0)
+        self.assertEqual(processed.n_channels, 8)
+        self.assertFalse(np.isnan(processed.data).any())
+        self.assertFalse(np.isinf(processed.data).any())
+        self.assertTrue(processed.metadata['rereferenced'])
+
+    def test_ftd_exclusion_rule(self):
+        from preprocessing.dataset_preprocessors import AlzheimersPreprocessor
+        prep = AlzheimersPreprocessor()
+        
+        # Group F (FTD) subject must return None (explicitly EXCLUDED)
+        res_ftd = prep.preprocess_file(
+            file_path="datasets/raw/alzheimers/sub-001/eeg/sub-001_task-eyesclosed_eeg.set",
+            subject_id="sub-066",
+            group_code="F"
+        )
+        self.assertIsNone(res_ftd)
+
+    def test_chbmit_seizure_annotations_no_fabrication(self):
+        import tempfile
+        from preprocessing.dataset_preprocessors import CHBMITPreprocessor
+        
+        prep = CHBMITPreprocessor()
+        summary_text = """File Name: chb01_03.edf
+Number of Seizures in File: 1
+Seizure 1 Start Time: 2996 seconds
+Seizure 1 End Time: 3036 seconds
+
+File Name: chb01_04.edf
+Number of Seizures in File: 0
+"""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
+            f.write(summary_text)
+            tmp_path = f.name
+            
+        try:
+            annotations = prep.parse_summary(tmp_path)
+            self.assertIn('chb01_03.edf', annotations)
+            self.assertEqual(annotations['chb01_03.edf'], [(2996.0, 3036.0)])
+            # chb01_04 has 0 seizures -> empty list (no fabricated seizure labels)
+            self.assertEqual(annotations.get('chb01_04.edf', []), [])
+        finally:
+            os.unlink(tmp_path)
+
+    def test_sample_dataset_preprocessors(self):
+        from preprocessing.dataset_preprocessors import run_controlled_sample_preprocessing
+        samples = run_controlled_sample_preprocessing()
+        self.assertGreater(len(samples), 0)
+        for s in samples:
+            self.assertFalse(np.isnan(s.data).any())
+            self.assertGreater(s.n_channels, 0)
+            self.assertGreater(s.srate_hz, 0.0)
+
+    def test_invalid_file_handling(self):
+        from preprocessing.dataset_preprocessors import SRMHealthyPreprocessor
+        prep = SRMHealthyPreprocessor()
+        res = prep.preprocess_file("invalid/non_existent_file.edf")
+        self.assertIsNone(res)
+
+
 if __name__ == '__main__':
     # Run with verbose output
     loader = unittest.TestLoader()
@@ -328,4 +420,5 @@ if __name__ == '__main__':
     runner = unittest.TextTestRunner(verbosity=2)
     result = runner.run(suite)
     sys.exit(0 if result.wasSuccessful() else 1)
+
 
