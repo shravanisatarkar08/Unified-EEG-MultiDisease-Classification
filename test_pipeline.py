@@ -413,6 +413,99 @@ Number of Seizures in File: 0
         self.assertIsNone(res)
 
 
+class TestEEGHarmonization(unittest.TestCase):
+    def setUp(self):
+        from preprocessing.dataset_preprocessors import PreprocessedEEGSignal
+        # Synthetic preprocessed signal (8 channels, 1000 Hz, 10 seconds)
+        self.srate = 1000.0
+        self.n_samples = int(self.srate * 10.0)
+        self.data = np.random.randn(8, self.n_samples).astype(np.float32)
+        self.ch_names = ['Fp1', 'Fp2', 'F3', 'F4', 'C3', 'C4', 'P3', 'P4']
+        self.signal = PreprocessedEEGSignal(
+            dataset_name='synth_ds',
+            class_category='healthy',
+            subject_id='sub-test01',
+            file_path='synth_path.edf',
+            srate_hz=self.srate,
+            channel_names=self.ch_names,
+            n_channels=8,
+            n_samples=self.n_samples,
+            duration_sec=10.0,
+            data=self.data
+        )
+
+    def test_resampling_and_window_shape(self):
+        from preprocessing.harmonization import EEGHarmonizer, HarmonizationConfig
+        harmonizer = EEGHarmonizer(HarmonizationConfig(target_srate_hz=256.0, window_sec=5.0))
+        windows = harmonizer.segment_into_windows(self.signal)
+        
+        self.assertGreater(len(windows), 0)
+        for w in windows:
+            self.assertEqual(w.sampling_rate, 256.0)
+            self.assertEqual(w.data.shape, (19, 1280))
+            self.assertEqual(w.n_channels, 19)
+            self.assertEqual(w.n_samples, 1280)
+            self.assertFalse(np.isnan(w.data).any())
+            self.assertFalse(np.isinf(w.data).any())
+
+    def test_overlap_behavior(self):
+        from preprocessing.harmonization import EEGHarmonizer, HarmonizationConfig
+        # 0% overlap -> 10s recording / 5s window = 2 windows
+        h_no_overlap = EEGHarmonizer(HarmonizationConfig(overlap=0.0))
+        wins_0 = h_no_overlap.segment_into_windows(self.signal)
+        self.assertEqual(len(wins_0), 2)
+        
+        # 50% overlap -> windows at 0-5s, 2.5-7.5s, 5-10s = 3 windows
+        h_50_overlap = EEGHarmonizer(HarmonizationConfig(overlap=0.5))
+        wins_50 = h_50_overlap.segment_into_windows(self.signal)
+        self.assertEqual(len(wins_50), 3)
+
+    def test_missing_channel_zero_fill_policy(self):
+        from preprocessing.harmonization import EEGHarmonizer, TARGET_19_MONOPOLAR
+        harmonizer = EEGHarmonizer()
+        windows = harmonizer.segment_into_windows(self.signal)
+        first_win = windows[0]
+        
+        # Pz was not in self.ch_names
+        self.assertIn('Pz', first_win.missing_channels)
+        pz_idx = TARGET_19_MONOPOLAR.index('Pz')
+        self.assertEqual(first_win.channel_mask[pz_idx], 0.0)
+        np.testing.assert_allclose(first_win.data[pz_idx], 0.0)
+
+    def test_chbmit_bipolar_montage_flagging(self):
+        from preprocessing.dataset_preprocessors import PreprocessedEEGSignal
+        from preprocessing.harmonization import EEGHarmonizer, TARGET_19_BIPOLAR
+        
+        bipolar_signal = PreprocessedEEGSignal(
+            dataset_name='chbmit',
+            class_category='epilepsy',
+            subject_id='chb01',
+            file_path='chb01_01.edf',
+            srate_hz=256.0,
+            channel_names=TARGET_19_BIPOLAR,
+            n_channels=19,
+            n_samples=2560,
+            duration_sec=10.0,
+            data=np.random.randn(19, 2560).astype(np.float32)
+        )
+        harmonizer = EEGHarmonizer()
+        windows = harmonizer.segment_into_windows(bipolar_signal)
+        
+        self.assertGreater(len(windows), 0)
+        for w in windows:
+            self.assertTrue(w.is_bipolar_montage)
+            self.assertEqual(w.channel_names, TARGET_19_BIPOLAR)
+
+    def test_subject_identity_preservation(self):
+        from preprocessing.harmonization import EEGHarmonizer
+        harmonizer = EEGHarmonizer()
+        windows = harmonizer.segment_into_windows(self.signal)
+        for w in windows:
+            self.assertEqual(w.subject_id, 'sub-test01')
+            self.assertEqual(w.dataset_name, 'synth_ds')
+            self.assertEqual(w.class_category, 'healthy')
+
+
 if __name__ == '__main__':
     # Run with verbose output
     loader = unittest.TestLoader()
@@ -420,5 +513,6 @@ if __name__ == '__main__':
     runner = unittest.TextTestRunner(verbosity=2)
     result = runner.run(suite)
     sys.exit(0 if result.wasSuccessful() else 1)
+
 
 

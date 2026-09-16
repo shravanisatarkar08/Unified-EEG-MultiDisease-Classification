@@ -26,6 +26,12 @@ import mne
 import numpy as np
 import pandas as pd
 
+import sys
+from pathlib import Path
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
 # Suppress verbose MNE runtime warnings
 warnings.filterwarnings("ignore", category=RuntimeWarning, module="mne")
 warnings.filterwarnings("ignore", category=UserWarning, module="mne")
