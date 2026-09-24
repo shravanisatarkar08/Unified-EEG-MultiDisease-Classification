@@ -31,6 +31,7 @@ PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
+import pandas as pd
 import torch
 
 
@@ -285,6 +286,11 @@ class TestValidateDatasets(unittest.TestCase):
         self.assertTrue(hasattr(DatasetValidator, 'validate_all'))
 
     def test_validate_all_execution(self):
+        raw_root = os.path.join(PROJECT_ROOT, 'datasets', 'raw')
+        chbmit_dir = os.path.join(raw_root, 'epilepsy')
+        srm_dir = os.path.join(raw_root, 'healthy')
+        if not os.path.isdir(chbmit_dir) or not os.path.isdir(srm_dir):
+            self.skipTest('Raw dataset directories not present; skipping live validation test.')
         from preprocessing.validate_datasets import DatasetValidator
         validator = DatasetValidator()
         result = validator.validate_all()
@@ -304,6 +310,10 @@ class TestValidateDatasets(unittest.TestCase):
 
     def test_inventory_csv_export(self):
         import csv
+        raw_root = os.path.join(PROJECT_ROOT, 'datasets', 'raw')
+        if not any(os.path.isdir(os.path.join(raw_root, d))
+                   for d in ('epilepsy', 'healthy', 'alzheimers', 'parkinsons')):
+            self.skipTest('Raw dataset directories not present; skipping inventory CSV export test.')
         from preprocessing.validate_datasets import DatasetValidator
         validator = DatasetValidator()
         summary = validator.validate_all()
@@ -398,6 +408,14 @@ Number of Seizures in File: 0
             os.unlink(tmp_path)
 
     def test_sample_dataset_preprocessors(self):
+        # Requires actual raw EEG files on disk
+        raw_root = os.path.join(PROJECT_ROOT, 'datasets', 'raw')
+        has_any_raw = any(
+            os.path.isdir(os.path.join(raw_root, d))
+            for d in ('epilepsy', 'healthy', 'alzheimers', 'parkinsons')
+        )
+        if not has_any_raw:
+            self.skipTest('Raw dataset directories not present; skipping controlled sample preprocessing test.')
         from preprocessing.dataset_preprocessors import run_controlled_sample_preprocessing
         samples = run_controlled_sample_preprocessing()
         self.assertGreater(len(samples), 0)
@@ -562,6 +580,13 @@ class TestDatasetSplit(unittest.TestCase):
             self.assertNotIn(a.class_category, EXCLUDED_CLASSES)
 
     def test_model_window_index_generation(self):
+        raw_root = os.path.join(PROJECT_ROOT, 'datasets', 'raw')
+        has_any_raw = any(
+            os.path.isdir(os.path.join(raw_root, d))
+            for d in ('epilepsy', 'healthy', 'alzheimers', 'parkinsons')
+        )
+        if not has_any_raw:
+            self.skipTest('Raw dataset directories not present; skipping model index generation test.')
         from preprocessing.dataset_split import SubjectLevelSplitter, build_model_window_index, export_model_index_csv
         from preprocessing.harmonization import run_controlled_sample_harmonization
 
@@ -595,6 +620,229 @@ class TestDatasetSplit(unittest.TestCase):
         # Verify no depression subjects assigned in local split
         dep_assignments = [a for a in assignments if a.class_category == 'depression']
         self.assertEqual(len(dep_assignments), 0)
+
+
+class TestTrainingDataset(unittest.TestCase):
+    """Focused tests for training/dataset.py (EEGDataset + get_dataloaders)."""
+
+    # ------------------------------------------------------------------
+    # Helpers
+    # ------------------------------------------------------------------
+
+    def _make_index_df(self, n_rows: int = 6) -> pd.DataFrame:
+        """Build a minimal in-memory index DataFrame without touching real files."""
+        rows = []
+        classes = [
+            ("healthy",    0, "srm_healthy",  False),
+            ("epilepsy",   1, "chbmit",       True),
+            ("alzheimers", 2, "alzheimers",   False),
+            ("parkinsons", 3, "parkinsons",   False),
+            ("healthy",    0, "srm_healthy",  False),
+            ("epilepsy",   1, "chbmit",       True),
+        ]
+        splits = ["train", "train", "val", "train", "test", "val"]
+        for i in range(n_rows):
+            cat, lbl, ds, bipolar = classes[i % len(classes)]
+            rows.append({
+                "split":              splits[i % len(splits)],
+                "dataset_name":       ds,
+                "subject_id":         f"sub-{i:03d}",
+                "class_category":     cat,
+                "class_label_idx":    lbl,
+                "source_file":        "nonexistent/dummy.edf",
+                "window_idx":         i,
+                "window_start_sec":   float(i) * 2.5,
+                "window_end_sec":     float(i) * 2.5 + 5.0,
+                "sampling_rate":      256.0,
+                "n_channels":         19,
+                "n_samples":          1280,
+                "is_bipolar_montage": bipolar,
+                "missing_channels":   "",
+            })
+        return pd.DataFrame(rows)
+
+    # ------------------------------------------------------------------
+    # 1. Import check
+    # ------------------------------------------------------------------
+
+    def test_training_package_imports(self):
+        """training package and dataset module must be importable."""
+        import training
+        from training import EEGDataset, get_dataloaders, CLASS_TO_IDX, IDX_TO_CLASS
+        self.assertTrue(callable(EEGDataset))
+        self.assertTrue(callable(get_dataloaders))
+        self.assertIsInstance(CLASS_TO_IDX, dict)
+        self.assertIsInstance(IDX_TO_CLASS, dict)
+
+    # ------------------------------------------------------------------
+    # 2. CLASS_TO_IDX consistency with dataset_split
+    # ------------------------------------------------------------------
+
+    def test_class_to_idx_consistency_with_dataset_split(self):
+        """training.CLASS_TO_IDX must match the canonical 5-class mapping.
+
+        Note: we compare against the hardcoded canonical values rather than
+        importing preprocessing.dataset_split directly, because that module
+        has a top-level MNE import that fails in environments without MNE.
+        The canonical mapping is documented in preprocessing/dataset_split.py.
+        """
+        from training import CLASS_TO_IDX as train_map
+        expected = {
+            "healthy": 0,
+            "epilepsy": 1,
+            "alzheimers": 2,
+            "parkinsons": 3,
+            "depression": 4,
+        }
+        self.assertEqual(train_map, expected)
+
+    # ------------------------------------------------------------------
+    # 3. EEGDataset construction from synthetic DataFrame
+    # ------------------------------------------------------------------
+
+    def test_eegdataset_construction(self):
+        """EEGDataset can be constructed from an in-memory DataFrame."""
+        from training.dataset import EEGDataset
+        df = self._make_index_df()
+        ds = EEGDataset(index_df=df, project_root=".", cache_size=2)
+        self.assertIsInstance(ds, EEGDataset)
+
+    # ------------------------------------------------------------------
+    # 4. __len__ matches DataFrame rows
+    # ------------------------------------------------------------------
+
+    def test_eegdataset_len(self):
+        from training.dataset import EEGDataset
+        df = self._make_index_df(n_rows=6)
+        ds = EEGDataset(index_df=df, project_root=".")
+        self.assertEqual(len(ds), 6)
+
+    # ------------------------------------------------------------------
+    # 5. __getitem__ output contract (tensor shape, dtype, label)
+    #    File is nonexistent → zeros fallback path is tested here.
+    # ------------------------------------------------------------------
+
+    def test_eegdataset_getitem_tensor_shape_and_dtype(self):
+        """__getitem__ must return float32 tensor [19, 1280] even on missing files."""
+        from training.dataset import EEGDataset
+        df = self._make_index_df(n_rows=4)
+        ds = EEGDataset(index_df=df, project_root=".", cache_size=2)
+        for i in range(len(ds)):
+            eeg, label, meta = ds[i]
+            self.assertIsInstance(eeg, torch.Tensor)
+            self.assertEqual(eeg.shape, (19, 1280), msg=f"Wrong shape at idx {i}")
+            self.assertEqual(eeg.dtype, torch.float32, msg=f"Wrong dtype at idx {i}")
+            self.assertIsInstance(label, int)
+            self.assertIn(label, [0, 1, 2, 3, 4])
+
+    # ------------------------------------------------------------------
+    # 6. __getitem__ provenance metadata keys
+    # ------------------------------------------------------------------
+
+    def test_eegdataset_getitem_meta_keys(self):
+        from training.dataset import EEGDataset
+        df = self._make_index_df(n_rows=2)
+        ds = EEGDataset(index_df=df, project_root=".")
+        _, _, meta = ds[0]
+        required_keys = {
+            "dataset_name", "subject_id", "class_category", "source_file",
+            "window_idx", "window_start_sec", "window_end_sec",
+            "is_bipolar_montage", "missing_channels", "split",
+        }
+        self.assertTrue(required_keys.issubset(set(meta.keys())),
+                        msg=f"Missing meta keys: {required_keys - set(meta.keys())}")
+
+    # ------------------------------------------------------------------
+    # 7. No Depression / MODMA data fabrication guard
+    # ------------------------------------------------------------------
+
+    def test_no_depression_fabrication_guard(self):
+        """get_dataloaders must raise ValueError if Depression rows found in index."""
+        import pandas as pd
+        from training.dataset import get_dataloaders
+        import tempfile
+
+        dep_row = {
+            "split": "train", "dataset_name": "modma", "subject_id": "sub-001",
+            "class_category": "depression", "class_label_idx": 4,
+            "source_file": "fake.edf", "window_idx": 0,
+            "window_start_sec": 0.0, "window_end_sec": 5.0,
+            "sampling_rate": 256.0, "n_channels": 19, "n_samples": 1280,
+            "is_bipolar_montage": False, "missing_channels": "",
+        }
+        df = pd.DataFrame([dep_row])
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
+            df.to_csv(f, index=False)
+            tmp_csv = f.name
+        try:
+            with self.assertRaises(ValueError):
+                get_dataloaders(index_csv=tmp_csv, project_root=".")
+        finally:
+            os.unlink(tmp_csv)
+
+    # ------------------------------------------------------------------
+    # 8. get_dataloaders constructs loaders from real index CSV
+    # ------------------------------------------------------------------
+
+    def test_get_dataloaders_from_real_index_csv(self):
+        """get_dataloaders must return dict with at least one split from the real index."""
+        from training.dataset import get_dataloaders
+        index_csv = os.path.join(PROJECT_ROOT, "datasets", "metadata",
+                                 "model_dataset_index.csv")
+        if not os.path.exists(index_csv):
+            self.skipTest("model_dataset_index.csv not found")
+        loaders = get_dataloaders(
+            index_csv=index_csv,
+            project_root=PROJECT_ROOT,
+            batch_size=4,
+            num_workers=0,
+        )
+        self.assertGreater(len(loaders), 0)
+        for split_name, loader in loaders.items():
+            self.assertIn(split_name, ["train", "val", "test"])
+            self.assertGreater(len(loader.dataset), 0)
+
+    # ------------------------------------------------------------------
+    # 9. DataLoader batch shape and dtype (uses zero-fill fallback)
+    # ------------------------------------------------------------------
+
+    def test_dataloader_batch_shape_and_dtype(self):
+        """Iterating a DataLoader must yield float32 [B,19,1280] + int64 labels."""
+        from training.dataset import EEGDataset, _eeg_collate_fn
+        from torch.utils.data import DataLoader
+        df = self._make_index_df(n_rows=4)
+        ds = EEGDataset(index_df=df, project_root=".")
+        loader = DataLoader(ds, batch_size=4, shuffle=False,
+                            collate_fn=_eeg_collate_fn)
+        eeg_batch, labels, metas = next(iter(loader))
+        self.assertEqual(eeg_batch.shape, (4, 19, 1280))
+        self.assertEqual(eeg_batch.dtype, torch.float32)
+        self.assertEqual(labels.shape, (4,))
+        self.assertEqual(labels.dtype, torch.long)
+        self.assertIsInstance(metas, list)
+        self.assertEqual(len(metas), 4)
+
+    # ------------------------------------------------------------------
+    # 10. Subject-level leakage: each subject appears in exactly one split
+    # ------------------------------------------------------------------
+
+    def test_subject_level_no_leakage_in_real_index(self):
+        """Verify zero subject overlap across splits in the real model index CSV."""
+        import pandas as pd
+        index_csv = os.path.join(PROJECT_ROOT, "datasets", "metadata",
+                                 "model_dataset_index.csv")
+        if not os.path.exists(index_csv):
+            self.skipTest("model_dataset_index.csv not found")
+        df = pd.read_csv(index_csv)
+        subject_splits = (
+            df.groupby(["dataset_name", "subject_id"])["split"]
+            .nunique()
+        )
+        leaking = subject_splits[subject_splits > 1]
+        self.assertEqual(
+            len(leaking), 0,
+            msg=f"Subjects appear in multiple splits (leakage):\n{leaking}"
+        )
 
 
 if __name__ == '__main__':
