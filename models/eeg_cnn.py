@@ -36,7 +36,7 @@ class EEGFeatureExtractor(nn.Module):
             forward()          -> [B, num_classes] classification logits
     """
 
-    def __init__(self, n_channels=19, n_samples=1280, n_classes=2,
+    def __init__(self, n_channels=19, n_samples=1280, n_classes=5,
                  F1=16, D=2, F2=32, dropout_rate=0.25, embed_dim=64):
         super().__init__()
         self.n_channels = n_channels

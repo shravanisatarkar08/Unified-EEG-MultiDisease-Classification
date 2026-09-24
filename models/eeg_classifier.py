@@ -18,7 +18,7 @@ class EEGClassifier(nn.Module):
     Combines EEGNet-style CNN feature extractor with a Transformer encoder.
     """
 
-    def __init__(self, n_channels=19, n_samples=1280, num_classes=2,
+    def __init__(self, n_channels=19, n_samples=1280, num_classes=5,
                  # CNN params
                  F1=16, D=2, F2=32, cnn_dropout=0.25, embed_dim=64,
                  # Transformer params

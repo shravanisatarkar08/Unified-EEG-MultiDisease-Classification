@@ -584,7 +584,7 @@ if btn_trans and st.session_state['cnn_features'] is not None:
         embed_dim=feats.shape[2],
         num_heads=4,
         num_layers=2,
-        num_classes=2
+        num_classes=5
     )
     transformer_model.eval()
     

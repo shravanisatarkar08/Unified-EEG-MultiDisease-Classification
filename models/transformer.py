@@ -50,7 +50,7 @@ class EEGTransformerEncoder(nn.Module):
     """
 
     def __init__(self, embed_dim=64, num_heads=4, num_layers=2,
-                 ff_dim=128, dropout=0.1, num_classes=2, max_len=512):
+                 ff_dim=128, dropout=0.1, num_classes=5, max_len=512):
         super().__init__()
 
         self.embed_dim = embed_dim

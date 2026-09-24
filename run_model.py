@@ -27,7 +27,8 @@ DISEASE_CLASSES = [
     "Healthy Control",
     "Epilepsy (Seizure/Non-Seizure)",
     "Alzheimer's Disease",
-    "Parkinson's Disease"
+    "Parkinson's Disease",
+    "Depression"
 ]
 
 
