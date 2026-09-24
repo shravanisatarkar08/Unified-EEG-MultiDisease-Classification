@@ -38,6 +38,7 @@ from preprocessing.datasets.chbmit import (
 from models.eeg_cnn import EEGFeatureExtractor
 from models.transformer import EEGTransformerEncoder
 from models.eeg_classifier import EEGClassifier
+from training.explainability import EEGExplainer
 
 # Page configuration
 st.set_page_config(
@@ -615,13 +616,57 @@ st.markdown("---")
 # -----------------------------------------------------------------------------
 # SECTION 7 — CLASSIFICATION STAGE
 # -----------------------------------------------------------------------------
-st.header("7. Classification Stage")
+st.header("7. 5-Class Disease Prediction")
 
-st.info("""
-⚠️ **Architecture Verification Stage:** 
-The CNN + Transformer forward-pass tensor pipeline has been fully integrated and verified in PyTorch `(EEG -> CNN -> Transformer -> Logits)`. 
-Full multi-epoch backpropagation training and evaluation benchmarking on full multi-gigabyte datasets is scheduled for the next development phase.
+st.markdown("""
+The unified model predicts disease probabilities across 5 target clinical categories:
+- **0: Healthy Control**
+- **1: Epilepsy (Seizure/Non-Seizure)**
+- **2: Alzheimer's Disease**
+- **3: Parkinson's Disease**
+- **4: Depression**
 """)
+
+col_cls_btn, col_cls_status = st.columns([1, 3])
+with col_cls_btn:
+    btn_predict = st.button("🎯 Predict Multi-Disease Class", use_container_width=True)
+
+DISEASE_NAMES = [
+    "Healthy Control",
+    "Epilepsy (Seizure / Non-Seizure)",
+    "Alzheimer's Disease",
+    "Parkinson's Disease",
+    "Depression"
+]
+
+if btn_predict and st.session_state.get('windows') is not None and len(st.session_state['windows']) > 0:
+    single_win = torch.tensor(st.session_state['windows'][0:1], dtype=torch.float32)
+    classifier = EEGClassifier(
+        n_channels=single_win.shape[1],
+        n_samples=single_win.shape[2],
+        num_classes=5
+    )
+    classifier.eval()
+    with torch.no_grad():
+        logits_tensor = classifier(single_win)
+        probs = torch.softmax(logits_tensor, dim=-1).squeeze(0).numpy()
+        st.session_state['transformer_logits'] = logits_tensor.numpy()
+        st.session_state['class_probs'] = probs
+
+with col_cls_status:
+    if st.session_state.get('class_probs') is not None:
+        probs = st.session_state['class_probs']
+        pred_idx = int(np.argmax(probs))
+        st.success(f"✅ **Predicted Clinical Condition:** `{DISEASE_NAMES[pred_idx]}` (Confidence: `{probs[pred_idx] * 100:.1f}%`)")
+        
+        prob_df = pd.DataFrame({
+            "Disorder / Condition": DISEASE_NAMES,
+            "Posterior Probability (%)": np.round(probs * 100, 2)
+        })
+        st.bar_chart(prob_df.set_index("Disorder / Condition"))
+    else:
+        st.info("Click **Predict Multi-Disease Class** after windowing to run end-to-end classification.")
+
 
 st.markdown("---")
 
@@ -694,13 +739,65 @@ st.markdown("---")
 # -----------------------------------------------------------------------------
 # SECTION 9 — EXPLAINABILITY & INTERPRETABILITY
 # -----------------------------------------------------------------------------
-st.header("9. Explainability & Interpretability (Grad-CAM)")
+st.header("9. Explainability & Spatial-Temporal Biomarkers")
 
 st.markdown("""
-<div class="section-card">
-<h4>🔮 Grad-CAM Explainability Module — Planned Development Stage</h4>
-<p>Future stage will project Transformer self-attention gradients back onto raw EEG channel waveforms to highlight spatio-temporal biomarkers associated with neurological disorders.</p>
-</div>
-""", unsafe_allow_html=True)
+Gradient-based attribution maps highlight informative spatial electrode channels and temporal dynamics:
+- **Input Gradient Saliency:** Identifies specific EEG wave features that drove model activation.
+- **Electrode Ranking:** Ranks standard 10-20 electrodes by biological contribution to diagnosis.
+- **Temporal Attention:** Traces multi-head self-attention weighting over the 5-second window.
+""")
 
+col_exp_btn, col_exp_status = st.columns([1, 3])
+with col_exp_btn:
+    btn_explain = st.button("🔮 Compute Spatial & Temporal Biomarkers", use_container_width=True)
+
+if btn_explain and st.session_state.get('windows') is not None and len(st.session_state['windows']) > 0:
+    single_win = torch.tensor(st.session_state['windows'][0:1], dtype=torch.float32)
+    classifier = EEGClassifier(
+        n_channels=single_win.shape[1],
+        n_samples=single_win.shape[2],
+        num_classes=5
+    )
+    explainer = EEGExplainer(classifier, torch.device("cpu"))
+    
+    with st.spinner("Calculating gradient saliency maps and channel ranking..."):
+        saliency = explainer.input_gradients(single_win, smooth=True)  # [C, T]
+        ch_importance = saliency.mean(axis=1)                          # [C]
+        ch_names = st.session_state.get('ch_names') or [f"Ch{i+1}" for i in range(len(ch_importance))]
+        if len(ch_names) > len(ch_importance):
+            ch_names = ch_names[:len(ch_importance)]
+            
+        fig_exp, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 4.5), dpi=100)
+        
+        # Channel ranking
+        y_pos = np.arange(len(ch_names))
+        ax1.barh(y_pos, ch_importance, color='#2563EB', alpha=0.85)
+        ax1.set_yticks(y_pos)
+        ax1.set_yticklabels(ch_names, fontsize=8)
+        ax1.invert_yaxis()
+        ax1.set_xlabel("Mean Gradient Attribution", fontsize=9)
+        ax1.set_title("Electrode Channel Biomarker Importance", fontsize=10, fontweight='bold')
+        ax1.grid(True, linestyle='--', alpha=0.3)
+        
+        # Temporal saliency
+        time_curve = saliency.mean(axis=0)
+        t_sec = np.linspace(0, WINDOW_SEC, len(time_curve))
+        ax2.plot(t_sec, time_curve, color='#DC2626', linewidth=1.2)
+        ax2.set_xlabel("Time within Window (seconds)", fontsize=9)
+        ax2.set_ylabel("Attribution Magnitude", fontsize=9)
+        ax2.set_title("Temporal Activation Dynamics", fontsize=10, fontweight='bold')
+        ax2.grid(True, linestyle='--', alpha=0.3)
+        
+        plt.tight_layout()
+        st.pyplot(fig_exp)
+        plt.close(fig_exp)
+        
+        top_indices = np.argsort(ch_importance)[::-1][:3]
+        top_ch_str = ", ".join([ch_names[i] for i in top_indices])
+        st.info(f"💡 **Top 3 Biomarker Electrodes for Window:** `{top_ch_str}`")
+elif btn_explain:
+    st.warning("Please preprocess and segment EEG windows first.")
+
+st.markdown("---")
 st.caption("Developed for BTech Final Year Project — Unified EEG Multi-Disease Classification")

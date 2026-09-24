@@ -235,3 +235,8 @@ datasets/processed/
 
 .ipynb_checkpoints/
 tempCodeRunnerFile.*
+
+# Generated features, checkpoints, logs
+datasets/features/
+checkpoints/
+runs/

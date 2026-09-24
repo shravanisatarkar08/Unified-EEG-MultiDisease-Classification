@@ -10,6 +10,7 @@ import sys
 import os
 import argparse
 import time
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -21,6 +22,7 @@ if PROJECT_ROOT not in sys.path:
 
 from models.eeg_classifier import EEGClassifier
 from preprocessing.config import N_CHANNELS, WINDOW_SAMPLES, TARGET_SRATE, WINDOW_SEC
+from training.explainability import EEGExplainer
 
 # Supported multi-disease classes in the framework
 DISEASE_CLASSES = [
@@ -30,6 +32,7 @@ DISEASE_CLASSES = [
     "Parkinson's Disease",
     "Depression"
 ]
+
 
 
 def run_inference_demo(device: torch.device):
@@ -159,9 +162,59 @@ def run_training_demo(device: torch.device):
     print("=" * 70)
 
 
+def run_explainability_demo(device: torch.device):
+    print("=" * 70)
+    print(" UNIFIED EEG MULTI-DISEASE CLASSIFIER - EXPLAINABILITY DEMO")
+    print("=" * 70)
+
+    n_channels = N_CHANNELS
+    n_samples = WINDOW_SAMPLES
+    num_classes = len(DISEASE_CLASSES)
+
+    print(f"[*] Initializing model and explainer on {device}...")
+    model = EEGClassifier(
+        n_channels=n_channels,
+        n_samples=n_samples,
+        num_classes=num_classes
+    ).to(device)
+    model.eval()
+
+    explainer = EEGExplainer(model, device)
+
+    torch.manual_seed(42)
+    sample_eeg = torch.randn(1, n_channels, n_samples, device=device)
+
+    print("[*] Computing input gradient saliency map...")
+    saliency = explainer.input_gradients(sample_eeg, smooth=True)  # [C, T]
+    ch_importance = saliency.mean(axis=1)                         # [C]
+    top_channels = np.argsort(ch_importance)[::-1][:5]
+
+    print(f"    - Saliency shape: {saliency.shape}")
+    print(f"    - Top 5 salient channels by gradient magnitude: {top_channels.tolist()}")
+
+    print("[*] Computing Integrated Gradients attribution (steps=10)...")
+    ig_map = explainer.integrated_gradients(sample_eeg, steps=10)
+    print(f"    - Integrated Gradients shape: {ig_map.shape}")
+    print(f"    - Mean IG magnitude: {np.abs(ig_map).mean():.6f}")
+
+    print("[*] Extracting Transformer self-attention weights...")
+    attn = explainer.transformer_attention(sample_eeg)
+    if attn is not None:
+        print(f"    - Token attention shape: {attn.shape}")
+        peak_token = int(np.argmax(attn))
+        print(f"    - Peak attention token index: {peak_token}/{len(attn)}")
+    else:
+        print("    - Attention extraction hook not triggered in this forward mode.")
+
+    print("-" * 70)
+    print("[SUCCESS] Explainability demo executed successfully!")
+    print("=" * 70)
+
+
 def main():
     parser = argparse.ArgumentParser(description="Run Unified EEG Model")
     parser.add_argument("--train-demo", action="store_true", help="Run a quick synthetic training demonstration")
+    parser.add_argument("--explain-demo", action="store_true", help="Run gradient-based explainability demonstration")
     parser.add_argument("--device", type=str, default="auto", choices=["auto", "cpu", "cuda"], help="Compute device")
     args = parser.parse_args()
 
@@ -172,6 +225,8 @@ def main():
 
     if args.train_demo:
         run_training_demo(device)
+    elif args.explain_demo:
+        run_explainability_demo(device)
     else:
         run_inference_demo(device)
 
