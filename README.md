@@ -355,15 +355,19 @@ Each dataset goes through **dataset-specific preprocessing** followed by **commo
 - [x] CNN feature extractor ([`EEGFeatureExtractor`](models/eeg_cnn.py))
 - [x] Positional Transformer encoder ([`EEGTransformerEncoder`](models/transformer.py))
 - [x] CHB-MIT, Alzheimer's, Parkinson's preprocessor modules
-- [x] Complete 52-test validation suite covering models, preprocessing, and training pipelines ([`test_pipeline.py`](test_pipeline.py))
-- [x] Standalone inference and training runner ([`run_model.py`](run_model.py))
-- [x] Real-time classification (RTC) timing benchmarks (< 25 ms/window)
-- [x] **Cross-Disease Dataset Training Pipeline**: Unified PyTorch `Dataset` and `DataLoader` with lazy-loading MNE integration and zero-leakage subject-level splits ([`training/dataset.py`](training/dataset.py))
+- [x] Complete 81-test validation suite covering models, preprocessing, trainer, and explainability ([`test_pipeline.py`](test_pipeline.py))
+- [x] Standalone inference, training, and explainability runner ([`run_model.py`](run_model.py))
+- [x] Real-time classification (RTC) timing benchmarks (< 20 ms/sample)
+- [x] **Cross-Disease Dataset Training Pipeline**: Unified PyTorch `Dataset` and `DataLoader` with lazy-loading MNE integration and zero-leakage subject-level splits ([`training/dataset.py`](training/dataset.py), [`training/dataset_split.py`](training/dataset_split.py))
+- [x] **CNN Feature Extraction Pipeline**: Offline NPZ extraction of temporal tokens with complete provenance metadata ([`training/feature_extraction.py`](training/feature_extraction.py))
+- [x] **Full Training Loop Engine**: AdamW optimizer, cosine learning rate scheduling with warm-up, early stopping, and best-model checkpointing ([`training/trainer.py`](training/trainer.py))
+- [x] **Clinical Multi-Class Evaluation**: Per-class precision, recall, F1-score, accuracy, and confusion matrix benchmarking ([`training/evaluator.py`](training/evaluator.py))
+- [x] **Gradient-Based Explainability**: Input gradient saliency maps, Integrated Gradients, and Transformer self-attention extraction ([`training/explainability.py`](training/explainability.py))
+- [x] **Interactive Streamlit Prototype**: 5-class clinical condition prediction with confidence distribution and spatial-temporal biomarker attribution ([`app/app.py`](app/app.py))
 
 ### Roadmap to Completion (RTC)
-- [ ] **Explainability Module**: Implement Grad-CAM and Transformer Attention Rollout over 10-20 electrode topomaps.
 - [ ] **Streaming RTC Server**: WebSocket/LSL (Lab Streaming Layer) real-time streaming inference server for live EEG headsets.
-- [ ] **Clinical Metrics Evaluation**: Benchmark balanced accuracy, macro-F1, sensitivity, and specificity across cross-validation folds.
+- [ ] **Topographic 2D Scalp Maps**: Interactive 2D scalp interpolation (topomaps) for spatial biomarker visualization.
 
 ---
 
@@ -371,37 +375,48 @@ Each dataset goes through **dataset-specific preprocessing** followed by **commo
 
 ```
 Unified-EEG-MultiDisease-Classification/
-├── run_model.py            # Unified runner: inference demo & training step demo
-├── test_pipeline.py        # 23-test validation & smoke test suite
+├── run_model.py            # Unified runner: inference demo, training demo & explainability demo
+├── test_pipeline.py        # 81-test comprehensive validation & smoke test suite
 ├── requirements.txt        # Project dependencies
 ├── README.md               # Project documentation
 ├── RUNNING_GUIDE.md        # Dedicated step-by-step running & execution guide
+├── BLOCKER.md              # Documentation of external raw dataset requirements
+├── app/
+│   └── app.py              # Streamlit faculty prototype & interactive 5-class dashboard
 ├── models/
 │   ├── __init__.py         # Model package exports
 │   ├── eeg_cnn.py          # EEGNet-style CNN feature extractor
 │   ├── transformer.py      # Transformer encoder with CLS token
 │   └── eeg_classifier.py   # Full CNN + Transformer classifier
-└── preprocessing/
-    ├── config.py           # Shared constants (srate, channels, paths)
-    ├── common.py           # Filters, channel normalization, z-score normalization
-    ├── harmonize.py        # Harmonization pipeline
-    ├── loader.py           # EDF loader
-    ├── metadata.py         # WindowMetadata dataclass + CSV I/O
-    ├── segment.py          # Continuous & labeled interval windowing
-    └── datasets/
-        ├── __init__.py     # Dataset exports
-        ├── chbmit.py       # CHB-MIT epilepsy preprocessor
-        ├── alzheimers.py   # OpenNeuro ds004504 Alzheimer's preprocessor
-        ├── parkinsons.py   # OpenNeuro ds004584 Parkinson's preprocessor
-        ├── modma.py        # MODMA depression stub (blocker documented)
-        └── tuab.py         # TUAB stub (unavailable)
+├── preprocessing/
+│   ├── config.py           # Shared constants (srate, channels, paths, disease mapping)
+│   ├── common.py           # Filters, channel normalization, z-score normalization
+│   ├── harmonize.py        # Harmonization pipeline
+│   ├── loader.py           # EDF loader
+│   ├── metadata.py         # WindowMetadata dataclass + CSV I/O
+│   ├── segment.py          # Continuous & labeled interval windowing
+│   └── datasets/
+│       ├── __init__.py     # Dataset exports
+│       ├── chbmit.py       # CHB-MIT epilepsy preprocessor
+│       ├── alzheimers.py   # OpenNeuro ds004504 Alzheimer's preprocessor
+│       ├── parkinsons.py   # OpenNeuro ds004584 Parkinson's preprocessor
+│       ├── modma.py        # MODMA depression stub (blocker documented)
+│       └── tuab.py         # TUAB stub (unavailable)
+└── training/
+    ├── __init__.py         # Training package exports
+    ├── dataset.py          # Lazy-loading PyTorch EEGDataset and DataLoader factory
+    ├── dataset_split.py    # Zero-leakage subject-level 70/15/15 dataset splitter
+    ├── feature_extraction.py # CNN feature token extraction to NPZ with provenance
+    ├── trainer.py          # Full training loop with AdamW, cosine LR, early stopping
+    ├── evaluator.py        # Multi-class evaluation metrics and confusion matrix
+    └── explainability.py   # Input gradients, Integrated Gradients, attention extraction
 ```
 
 ---
 
 ## Prototype Demo UI
 
-An interactive browser-based faculty demonstration application is provided using Streamlit:
+An interactive browser-based demonstration application is provided using Streamlit:
 
 ```bash
 pip install -r requirements.txt
@@ -409,16 +424,15 @@ streamlit run app/app.py
 ```
 
 ### What the Prototype Demonstrates:
-1. **EEG Input & Metadata:** Real EDF file loading (MNE), duration, sampling rate, channels count, and seizure event annotations.
+1. **EEG Input & Metadata:** Real EDF/.set file loading (MNE), duration, sampling rate, channels count, and seizure event annotations.
 2. **Raw EEG Waveform Visualization:** Multi-channel plotting of raw brain signal rhythms.
-3. **Harmonization & Preprocessing:** 0.5–45 Hz bandpass filtering, 50/60 Hz notch filtering, channel reordering (19-channel standard / bipolar), and 256 Hz resampling.
+3. **Harmonization & Preprocessing:** 0.5–45 Hz bandpass filtering, 50/60 Hz notch filtering, channel reordering (19-channel standard 10-20 system), and 256 Hz resampling.
 4. **Segmentation & Windowing:** 5-second overlapping window creation `[19 × 1280]`, window counts, and seizure vs. non-seizure segment breakdown.
-5. **CNN Feature Extractor Forward Pass:** Real PyTorch tensor forward pass `[1, 19, 1280] → [1, 40, 64]` extracting temporal-spatial feature sequence.
-6. **Transformer Encoder Forward Pass:** Real PyTorch forward pass with CLS token prepending, sinusoidal positional encoding, and multi-head self-attention `[1, 40, 64] → [1, 2]`.
-7. **Unified Multi-Disease Architecture:** Overview of CHB-MIT (Epilepsy), ds004504 (Alzheimer's), ds004584 (Parkinson's), MODMA (Depression), and TUAB (Abnormal/Normal).
-8. **Grad-CAM Explainability Preview:** Architectural placement for upcoming spatio-temporal gradient visualization.
-
-> **Honest Scientific Disclosure:** The prototype demonstrates the full PyTorch tensor pipeline (`EEG -> CNN -> Transformer -> Logits`). Weights are initialized architecture parameters; full multi-epoch backpropagation training is the next project stage. No fake disease predictions or accuracy metrics are generated.
+5. **CNN Feature Extractor Forward Pass:** Real PyTorch tensor forward pass `[1, 19, 1280] → [1, 40, 64]` extracting temporal-spatial feature sequences.
+6. **Transformer Encoder Forward Pass:** Real PyTorch forward pass with CLS token prepending, sinusoidal positional encoding, and multi-head self-attention `[1, 40, 64] → [1, 5]`.
+7. **5-Class Disease Prediction:** End-to-end classification across Healthy Control, Epilepsy, Alzheimer's Disease, Parkinson's Disease, and Depression with probability distribution bar chart.
+8. **Spatial-Temporal Biomarker Explainability:** Gradient-based attribution maps identifying salient electrode channels (e.g. Fp1, F3, C3, T3) and temporal activation dynamics across the 5-second window.
+9. **Unified Multi-Disease Architecture:** Overview of CHB-MIT (Epilepsy), ds004504 (Alzheimer's), ds004584 (Parkinson's), MODMA (Depression), and TUAB (Abnormal/Normal).
 
 ---
 
@@ -428,27 +442,25 @@ streamlit run app/app.py
 
 ```bash
 pip install torch --index-url https://download.pytorch.org/whl/cpu
-pip install mne numpy scipy pandas scikit-learn einops tqdm
+pip install mne numpy scipy pandas scikit-learn einops tqdm streamlit
 ```
 
-### Run Smoke Tests
+### Run Full Test Suite
 
 ```bash
-python test_pipeline.py
+pytest
 ```
 
 Expected output:
 
-```
-Ran 52 tests in ~2.5s
-
-OK
+```text
+77 passed, 4 skipped, 0 failures (81 items collected)
 ```
 
 ### Compile All Modules
 
 ```bash
-python -m compileall preprocessing models
+python -m compileall preprocessing models training app
 ```
 
 ### Run CHB-MIT Preprocessing (requires local EDF files)
@@ -472,9 +484,9 @@ Data must be at `datasets/raw/alzheimers/` in BIDS format with `participants.tsv
 ## Dataset Rules (Enforced)
 
 - CHB-MIT non-seizure recordings are labeled `non_seizure` (epilepsy interictal), **NOT healthy controls**
-- Alzheimer's ds004504: AD + Healthy only. FTD is **explicitly excluded**
-- Labels are derived from actual dataset metadata only — no invented labels
-- No metrics are reported from un-trained models
+- Alzheimer's ds004504: AD + Healthy only. FTD is **strictly excluded**
+- Labels are derived from actual dataset metadata only — no invented or fabricated labels
+- Zero subject leakage across train/validation/test splits (subject-level splitting enforced)
 
 ---
 
@@ -483,9 +495,11 @@ Data must be at `datasets/raw/alzheimers/` in BIDS format with `participants.tsv
 See `requirements.txt` for full dependency list.
 
 Key dependencies:
-- PyTorch 2.x (CPU)
+- PyTorch 2.x (CPU / CUDA)
 - MNE-Python 1.x
 - NumPy, SciPy, pandas, scikit-learn
+- Streamlit 1.x
+- Matplotlib
 
-> Note: pyEDFlib requires Microsoft Visual C++ build tools on Windows. MNE-Python's built-in EDF reader is used instead.
->>>>>>> b05c0a7 (feat: add Streamlit faculty prototype UI)
+> Note: pyEDFlib requires Microsoft Visual C++ build tools on Windows. MNE-Python's built-in EDF reader is used instead to eliminate C++ compilation requirements.
+
