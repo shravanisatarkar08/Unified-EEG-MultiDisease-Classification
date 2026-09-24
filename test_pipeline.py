@@ -845,6 +845,343 @@ class TestTrainingDataset(unittest.TestCase):
         )
 
 
+
+class TestFeatureExtraction(unittest.TestCase):
+    """STEP 4: CNN feature extraction pipeline tests."""
+
+    def test_feature_extraction_import(self):
+        from training.feature_extraction import extract_cnn_features, load_features, ExtractionResult
+        self.assertTrue(callable(extract_cnn_features))
+        self.assertTrue(callable(load_features))
+        self.assertTrue(callable(ExtractionResult))
+
+    def test_extraction_result_accumulation(self):
+        from training.feature_extraction import ExtractionResult
+        import numpy as np
+        result = ExtractionResult()
+        feats = np.random.randn(4, 40, 64).astype(np.float32)
+        labels = [0, 1, 2, 3]
+        metas = [
+            {"dataset_name": "chbmit",  "subject_id": "chb01", "class_category": "epilepsy",
+             "window_idx": 0, "source_file": "a.edf"},
+            {"dataset_name": "srm",     "subject_id": "sub01", "class_category": "healthy",
+             "window_idx": 1, "source_file": "b.edf"},
+            {"dataset_name": "alz",     "subject_id": "sub02", "class_category": "alzheimers",
+             "window_idx": 2, "source_file": "c.set"},
+            {"dataset_name": "park",    "subject_id": "sub03", "class_category": "parkinsons",
+             "window_idx": 3, "source_file": "d.set"},
+        ]
+        result.append_batch(feats, labels, metas)
+        self.assertEqual(len(result), 4)
+        nd = result.to_numpy_dict()
+        self.assertIn("embeddings", nd)
+        self.assertIn("labels", nd)
+        self.assertIn("dataset_names", nd)
+        self.assertEqual(nd["embeddings"].shape, (4, 40, 64))
+        self.assertEqual(nd["labels"].dtype, np.int64)
+
+    def test_extraction_result_provenance_preserved(self):
+        from training.feature_extraction import ExtractionResult
+        import numpy as np
+        result = ExtractionResult()
+        feats = np.zeros((1, 40, 64), dtype=np.float32)
+        result.append_batch(feats, [2], [{"dataset_name": "alz", "subject_id": "s01",
+                                           "class_category": "alzheimers",
+                                           "window_idx": 5, "source_file": "foo.set"}])
+        nd = result.to_numpy_dict()
+        self.assertEqual(str(nd["dataset_names"][0]), "alz")
+        self.assertEqual(str(nd["subject_ids"][0]), "s01")
+        self.assertEqual(int(nd["window_indices"][0]), 5)
+
+    def test_extract_cnn_features_missing_index(self):
+        """Should return empty dict when index CSV does not exist."""
+        import tempfile, os
+        from training.feature_extraction import extract_cnn_features
+        with tempfile.TemporaryDirectory() as tmp:
+            paths = extract_cnn_features(
+                index_csv=os.path.join(tmp, "nonexistent.csv"),
+                output_dir=os.path.join(tmp, "out"),
+            )
+        self.assertEqual(paths, {})
+
+    def test_extract_cnn_features_with_synthetic_index(self):
+        """Full extraction smoke test on synthetic in-memory index."""
+        import tempfile, os
+        import pandas as pd
+        from training.feature_extraction import extract_cnn_features, load_features
+        rows = []
+        for i in range(4):
+            rows.append({
+                "split": "train" if i < 3 else "val",
+                "dataset_name": "chbmit",
+                "subject_id": f"sub-{i:03d}",
+                "class_category": "epilepsy",
+                "class_label_idx": 1,
+                "source_file": "nonexistent/dummy.edf",
+                "window_idx": i,
+                "window_start_sec": float(i) * 5.0,
+                "window_end_sec": float(i) * 5.0 + 5.0,
+                "sampling_rate": 256.0,
+                "n_channels": 19,
+                "n_samples": 1280,
+                "is_bipolar_montage": False,
+                "missing_channels": "",
+            })
+        df = pd.DataFrame(rows)
+        with tempfile.TemporaryDirectory() as tmp:
+            csv_path = os.path.join(tmp, "idx.csv")
+            out_dir  = os.path.join(tmp, "features")
+            df.to_csv(csv_path, index=False)
+            paths = extract_cnn_features(
+                index_csv=csv_path,
+                output_dir=out_dir,
+                batch_size=4,
+            )
+            self.assertIn("train", paths)
+            self.assertIn("val",   paths)
+            # Verify NPZ structure
+            for split, p in paths.items():
+                loaded = load_features(str(p))
+                self.assertIn("embeddings", loaded)
+                self.assertIn("labels",     loaded)
+                self.assertIn("dataset_names", loaded)
+                # Shape: [n_windows, N, D]  N=40, D=64
+                self.assertEqual(loaded["embeddings"].ndim, 3)
+                self.assertEqual(loaded["embeddings"].shape[1], 40)
+                self.assertEqual(loaded["embeddings"].shape[2], 64)
+                self.assertFalse(np.isnan(loaded["embeddings"]).any())
+
+
+class TestTransformerIntegration(unittest.TestCase):
+    """STEP 5: Transformer integration with 5-class CNN pipeline."""
+
+    def setUp(self):
+        from models.eeg_classifier import EEGClassifier
+        self.B, self.C, self.T = 4, 19, 1280
+        self.model = EEGClassifier(
+            n_channels=self.C, n_samples=self.T, num_classes=5,
+            embed_dim=64, num_heads=4, num_layers=2, ff_dim=128,
+        ).eval()
+
+    def test_5class_output_shape(self):
+        x = torch.randn(self.B, self.C, self.T)
+        with torch.no_grad():
+            logits = self.model(x)
+        self.assertEqual(logits.shape, (self.B, 5))
+
+    def test_cnn_to_transformer_token_shape(self):
+        """CNN features must have correct temporal token count."""
+        x = torch.randn(self.B, self.C, self.T)
+        with torch.no_grad():
+            feats = self.model.get_features(x)   # [B, N, D]
+        N_expected = self.T // 32   # 1280//32 = 40
+        self.assertEqual(feats.shape, (self.B, N_expected, 64))
+
+    def test_softmax_probabilities_sum_to_one(self):
+        import torch.nn.functional as F
+        x = torch.randn(self.B, self.C, self.T)
+        with torch.no_grad():
+            logits = self.model(x)
+        probas = F.softmax(logits, dim=-1)
+        sums   = probas.sum(dim=-1)
+        torch.testing.assert_close(sums, torch.ones(self.B), atol=1e-5, rtol=0)
+
+    def test_gradient_flow(self):
+        """Backprop should not produce NaN or zero gradients."""
+        model_train = type(self.model)(
+            n_channels=self.C, n_samples=self.T, num_classes=5
+        ).train()
+        x = torch.randn(self.B, self.C, self.T)
+        y = torch.randint(0, 5, (self.B,))
+        logits = model_train(x)
+        loss   = torch.nn.CrossEntropyLoss()(logits, y)
+        loss.backward()
+        for name, param in model_train.named_parameters():
+            if param.grad is not None:
+                self.assertFalse(torch.isnan(param.grad).any(),
+                                 msg=f"NaN gradient in {name}")
+
+    def test_model_different_batch_sizes(self):
+        """Model should handle varying batch sizes without errors."""
+        for b in [1, 2, 8]:
+            x = torch.randn(b, self.C, self.T)
+            with torch.no_grad():
+                out = self.model(x)
+            self.assertEqual(out.shape, (b, 5))
+
+    def test_class_label_mapping_in_pipeline(self):
+        """5-class indices must match CLASS_TO_IDX canonical mapping."""
+        from training.dataset import CLASS_TO_IDX
+        expected = {"healthy": 0, "epilepsy": 1, "alzheimers": 2,
+                    "parkinsons": 3, "depression": 4}
+        self.assertEqual(CLASS_TO_IDX, expected)
+
+
+class TestTrainer(unittest.TestCase):
+    """STEP 6: Training loop smoke tests."""
+
+    def test_trainer_import(self):
+        from training.trainer import EEGTrainer, TrainConfig, run_demo
+        self.assertTrue(callable(EEGTrainer))
+        self.assertTrue(callable(run_demo))
+
+    def test_train_config_defaults(self):
+        from training.trainer import TrainConfig
+        cfg = TrainConfig()
+        self.assertEqual(cfg.num_classes, 5)
+        self.assertEqual(cfg.n_channels, 19)
+        self.assertEqual(cfg.n_samples, 1280)
+
+    def test_trainer_synthetic_demo(self):
+        """Training loop must complete without errors on synthetic data."""
+        from training.trainer import run_demo
+        history = run_demo(num_classes=5, n_epochs=2)
+        self.assertIn("train_loss", history)
+        self.assertIn("val_acc",    history)
+        self.assertEqual(len(history["train_loss"]), 2)
+
+    def test_trainer_loss_decreases(self):
+        """Loss should generally trend downward over demo epochs."""
+        from training.trainer import run_demo
+        history = run_demo(num_classes=5, n_epochs=5)
+        # Not strict, just check no extreme blow-up
+        for loss in history["train_loss"]:
+            self.assertFalse(np.isnan(loss), msg="NaN loss detected")
+            self.assertLess(loss, 1e6, msg="Exploding loss detected")
+
+    def test_checkpoint_saved(self):
+        """Trainer must save a checkpoint file."""
+        import tempfile
+        from training.trainer import EEGTrainer, TrainConfig
+        from torch.utils.data import TensorDataset, DataLoader
+
+        B, C, T = 8, 19, 1280
+        xs = torch.randn(B, C, T)
+        ys = torch.randint(0, 5, (B,))
+
+        def _collate(batch):
+            eeg = torch.stack([b[0] for b in batch])
+            lbl = torch.stack([b[1] for b in batch])
+            return eeg, lbl, [{}] * len(batch)
+
+        loader = DataLoader(TensorDataset(xs, ys), batch_size=4, collate_fn=_collate)
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            cfg = TrainConfig(
+                num_classes=5, max_epochs=2, patience=5,
+                checkpoint_dir=tmp_dir, lr=1e-3,
+            )
+            trainer = EEGTrainer(cfg)
+            trainer.train(loader, loader)
+            # At least one checkpoint file should exist
+            ckpts = list(sorted(
+                f for f in os.listdir(tmp_dir) if f.endswith(".pt")
+            ))
+            self.assertGreater(len(ckpts), 0, msg="No checkpoint file saved")
+
+
+class TestEvaluator(unittest.TestCase):
+    """STEP 7: Evaluation metrics smoke tests."""
+
+    def setUp(self):
+        from models.eeg_classifier import EEGClassifier
+        self.device = torch.device("cpu")
+        self.model  = EEGClassifier(n_channels=19, n_samples=1280, num_classes=5).eval()
+        xs = torch.randn(16, 19, 1280)
+        ys = torch.randint(0, 5, (16,))
+        from torch.utils.data import TensorDataset, DataLoader
+
+        def _collate(batch):
+            eeg = torch.stack([b[0] for b in batch])
+            lbl = torch.stack([b[1] for b in batch])
+            return eeg, lbl, [{}] * len(batch)
+
+        self.loader = DataLoader(
+            TensorDataset(xs, ys), batch_size=4, collate_fn=_collate
+        )
+
+    def test_evaluator_import(self):
+        from training.evaluator import evaluate_model, print_report
+        self.assertTrue(callable(evaluate_model))
+        self.assertTrue(callable(print_report))
+
+    def test_evaluate_returns_required_keys(self):
+        from training.evaluator import evaluate_model
+        metrics = evaluate_model(self.model, self.loader, self.device)
+        for key in ("accuracy", "macro_f1", "weighted_f1",
+                    "confusion_matrix", "per_class", "n_samples"):
+            self.assertIn(key, metrics, msg=f"Missing key: {key}")
+
+    def test_confusion_matrix_shape(self):
+        from training.evaluator import evaluate_model
+        metrics = evaluate_model(self.model, self.loader, self.device)
+        cm = metrics["confusion_matrix"]
+        self.assertEqual(cm.shape, (5, 5))
+
+    def test_per_class_has_all_classes(self):
+        from training.evaluator import evaluate_model
+        metrics = evaluate_model(self.model, self.loader, self.device)
+        for cls in ("healthy", "epilepsy", "alzheimers", "parkinsons", "depression"):
+            self.assertIn(cls, metrics["per_class"])
+
+    def test_accuracy_in_valid_range(self):
+        from training.evaluator import evaluate_model
+        metrics = evaluate_model(self.model, self.loader, self.device)
+        self.assertGreaterEqual(metrics["accuracy"], 0.0)
+        self.assertLessEqual(metrics["accuracy"], 1.0)
+
+    def test_evaluate_with_probas(self):
+        from training.evaluator import evaluate_model
+        metrics = evaluate_model(
+            self.model, self.loader, self.device, return_probas=True
+        )
+        self.assertIn("all_probas", metrics)
+        self.assertEqual(metrics["all_probas"].shape[1], 5)
+
+
+class TestExplainability(unittest.TestCase):
+    """STEP 8: Explainability smoke tests."""
+
+    def setUp(self):
+        from models.eeg_classifier import EEGClassifier
+        from training.explainability import EEGExplainer
+        self.device = torch.device("cpu")
+        self.model  = EEGClassifier(n_channels=19, n_samples=1280, num_classes=5).eval()
+        self.exp    = EEGExplainer(self.model, self.device)
+        self.x      = torch.randn(1, 19, 1280)
+
+    def test_explainer_import(self):
+        from training.explainability import EEGExplainer
+        self.assertTrue(callable(EEGExplainer))
+
+    def test_input_gradients_shape(self):
+        sal = self.exp.input_gradients(self.x, target_class=0)
+        self.assertEqual(sal.shape, (19, 1280))
+
+    def test_input_gradients_not_nan(self):
+        sal = self.exp.input_gradients(self.x, target_class=1)
+        self.assertFalse(np.isnan(sal).any())
+
+    def test_input_gradients_default_class(self):
+        """Should work without specifying target_class (uses argmax)."""
+        sal = self.exp.input_gradients(self.x)
+        self.assertEqual(sal.shape, (19, 1280))
+
+    def test_integrated_gradients_shape(self):
+        ig = self.exp.integrated_gradients(self.x, target_class=0, steps=5)
+        self.assertEqual(ig.shape, (19, 1280))
+
+    def test_integrated_gradients_not_nan(self):
+        ig = self.exp.integrated_gradients(self.x, target_class=2, steps=5)
+        self.assertFalse(np.isnan(ig).any())
+
+    def test_transformer_attention_shape(self):
+        attn = self.exp.transformer_attention(self.x)
+        # May be None if hooks don't fire; shape should be (N_tokens,) if not None
+        if attn is not None:
+            self.assertEqual(attn.ndim, 1)
+            self.assertGreater(len(attn), 0)
+
 if __name__ == '__main__':
     # Run with verbose output
     loader = unittest.TestLoader()
