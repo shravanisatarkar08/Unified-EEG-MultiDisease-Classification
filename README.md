@@ -150,7 +150,7 @@ python run_model.py --train-demo
 
 ### 4. Run Smoke Test Suite
 
-Execute the full 23-test validation suite covering preprocessing, config, channels, CNN, Transformer, and full classifier:
+Execute the full 52-test validation suite covering preprocessing, config, channels, CNN, Transformer, full classifier, and training data pipeline:
 
 ```bash
 python test_pipeline.py
@@ -162,7 +162,7 @@ python -m unittest test_pipeline.py -v
 
 Expected result:
 ```text
-Ran 23 tests in ~0.48s
+Ran 52 tests in ~2.5s
 OK
 ```
 
@@ -332,12 +332,12 @@ Each dataset goes through **dataset-specific preprocessing** followed by **commo
 - [x] CNN feature extractor ([`EEGFeatureExtractor`](models/eeg_cnn.py))
 - [x] Positional Transformer encoder ([`EEGTransformerEncoder`](models/transformer.py))
 - [x] CHB-MIT, Alzheimer's, Parkinson's preprocessor modules
-- [x] Complete 23-test smoke and shape validation suite ([`test_pipeline.py`](test_pipeline.py))
+- [x] Complete 52-test validation suite covering models, preprocessing, and training pipelines ([`test_pipeline.py`](test_pipeline.py))
 - [x] Standalone inference and training runner ([`run_model.py`](run_model.py))
 - [x] Real-time classification (RTC) timing benchmarks (< 25 ms/window)
+- [x] **Cross-Disease Dataset Training Pipeline**: Unified PyTorch `Dataset` and `DataLoader` with lazy-loading MNE integration and zero-leakage subject-level splits ([`training/dataset.py`](training/dataset.py))
 
 ### Roadmap to Completion (RTC)
-- [ ] **Cross-Disease Dataset Training**: Combine preprocessed windows across datasets into unified PyTorch DataLoaders.
 - [ ] **Explainability Module**: Implement Grad-CAM and Transformer Attention Rollout over 10-20 electrode topomaps.
 - [ ] **Streaming RTC Server**: WebSocket/LSL (Lab Streaming Layer) real-time streaming inference server for live EEG headsets.
 - [ ] **Clinical Metrics Evaluation**: Benchmark balanced accuracy, macro-F1, sensitivity, and specificity across cross-validation folds.
@@ -417,7 +417,7 @@ python test_pipeline.py
 Expected output:
 
 ```
-Ran 23 tests in ~0.4s
+Ran 52 tests in ~2.5s
 
 OK
 ```
