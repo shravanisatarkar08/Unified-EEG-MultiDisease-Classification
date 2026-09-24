@@ -97,24 +97,25 @@ python run_model.py
 [*] Batch size:         4
 [*] EEG Montage:        19 channels (10-20 system)
 [*] Window duration:    5 seconds (1280 samples @ 256 Hz)
-[*] Target Classes (4):
+[*] Target Classes (5):
     Class 0: Healthy Control
     Class 1: Epilepsy (Seizure/Non-Seizure)
     Class 2: Alzheimer's Disease
     Class 3: Parkinson's Disease
+    Class 4: Depression
 ----------------------------------------------------------------------
 [*] Initializing EEGClassifier (CNN Feature Extractor + Transformer)...
-    - CNN Extractor Params:     5,700
-    - Transformer Params:       76,100
-    - Total Model Parameters:   81,800
+    - CNN Extractor Params:     5,765
+    - Transformer Params:       76,229
+    - Total Model Parameters:   81,994
 ----------------------------------------------------------------------
 [*] Input Tensor Shape: [B, C, T] = [4, 19, 1280]
 [*] Stage 1 (CNN): Feature Tokens Shape: [B, N, D] = [4, 40, 64]
-[*] Stage 2 (Transformer): Logits Shape: [B, num_classes] = [4, 4]
-[*] Forward pass latency: ~24.88 ms/sample
+[*] Stage 2 (Transformer): Logits Shape: [B, num_classes] = [4, 5]
+[*] Forward pass latency: ~18.85 ms/sample
 ----------------------------------------------------------------------
 [*] Sample Predictions across the batch:
-    Sample #1: Predicted -> [Epilepsy (Seizure/Non-Seizure)] (Confidence: 31.4%)
+    Sample #1: Predicted -> [Alzheimer's Disease] (Confidence: 29.9%)
 ======================================================================
 [SUCCESS] Model executed successfully!
 ======================================================================
@@ -148,12 +149,12 @@ python run_model.py --train-demo
 
 ---
 
-### 4. Run Smoke Test Suite
+### 4. Run Smoke & Pipeline Test Suite
 
-Execute the full 52-test validation suite covering preprocessing, config, channels, CNN, Transformer, full classifier, and training data pipeline:
+Execute the comprehensive 81-test validation suite covering preprocessing, config, channels, CNN, Transformer, full classifier, feature extraction, trainer, evaluator, and explainability:
 
 ```bash
-python test_pipeline.py
+pytest
 ```
 Or with unittest:
 ```bash
@@ -162,16 +163,35 @@ python -m unittest test_pipeline.py -v
 
 Expected result:
 ```text
-Ran 52 tests in ~2.5s
-OK
+81 passed (or skipped if raw data not present), 0 failures
 ```
 
 ---
 
-### 5. Run Individual Model Modules
+### 5. Run Individual Model & Training Modules
 
-You can verify each stage of the neural network independently:
+You can verify each stage of the pipeline independently:
 
+- **Explainability Demo (`EEGExplainer`)**:
+  ```bash
+  python run_model.py --explain-demo
+  ```
+- **Training Engine Demo (`Trainer`)**:
+  ```bash
+  python -m training.trainer --demo
+  ```
+- **Evaluator & Confusion Matrix**:
+  ```bash
+  python -m training.evaluator
+  ```
+- **Feature Extraction Pipeline**:
+  ```bash
+  python -m training.feature_extraction --help
+  ```
+- **Streamlit Interactive Demonstration App**:
+  ```bash
+  streamlit run app/app.py
+  ```
 - **Full Combined Classifier (`EEGClassifier`)**:
   ```bash
   python -m models.eeg_classifier
@@ -186,7 +206,7 @@ You can verify each stage of the neural network independently:
   ```
 - **Compile all modules** to check syntax and imports:
   ```bash
-  python -m compileall preprocessing models
+  python -m compileall preprocessing models training app
   ```
 
 ---
@@ -214,16 +234,19 @@ When datasets are placed in `datasets/raw/`, run dataset-specific harmonization:
 
 | Task / Purpose | Command | Notes |
 |----------------|---------|-------|
-| **Install Dependencies** | `pip install -r requirements.txt` | Installs PyTorch (CPU), MNE, NumPy, SciPy, pandas |
-| **Run Inference Demo** | `python run_model.py` | Runs forward pass with timing, shapes, and class predictions |
+| **Install Dependencies** | `pip install -r requirements.txt` | Installs PyTorch (CPU), MNE, NumPy, SciPy, pandas, scikit-learn |
+| **Run Inference Demo** | `python run_model.py` | Runs forward pass with timing, shapes, and 5-class predictions |
 | **Run Training Demo** | `python run_model.py --train-demo` | Executes 5-step AdamW optimization on synthetic EEG data |
+| **Run Explainability Demo** | `python run_model.py --explain-demo` | Computes input gradients, integrated gradients & attention |
+| **Launch Streamlit Web App**| `streamlit run app/app.py` | Interactive 5-class diagnosis & biomarker saliency visualizer |
+| **Run Full Training Loop** | `python -m training.trainer --demo` | 3-epoch synthetic training with AdamW, Cosine LR, early stopping |
+| **Run Evaluation Suite** | `python -m training.evaluator` | Evaluates classification report, per-class F1, and confusion matrix |
+| **Run Test Suite** | `pytest` | 81 unit tests verifying models, preprocessing, trainer & explainability |
 | **Run on GPU (if CUDA available)** | `python run_model.py --device cuda` | Runs inference or training on CUDA GPU |
-| **Run Test Suite** | `python test_pipeline.py` | 23 unit tests verifying all model and preprocessing components |
-| **Run Test Suite (Verbose)** | `python -m unittest test_pipeline.py -v` | Detailed per-test pass/fail reporting |
 | **Run Classifier Module** | `python -m models.eeg_classifier` | Verifies full CNN + Transformer forward pass |
 | **Run CNN Module** | `python -m models.eeg_cnn` | Tests temporal, depthwise, and separable conv layers |
 | **Run Transformer Module** | `python -m models.transformer` | Tests CLS token, positional encodings, and attention heads |
-| **Verify Bytecode Compilation** | `python -m compileall preprocessing models` | Compiles Python files to ensure zero syntax/import errors |
+| **Verify Bytecode Compilation** | `python -m compileall preprocessing models training app` | Compiles Python files to ensure zero syntax/import errors |
 | **CHB-MIT Preprocessing** | `python -m preprocessing.datasets.chbmit` | Extracts 5s windows from epilepsy EDF files |
 | **Alzheimer's Preprocessing** | `python -m preprocessing.datasets.alzheimers` | Filters and harmonizes ds004504 (FTD excluded) |
 | **Parkinson's Preprocessing** | `python -m preprocessing.datasets.parkinsons` | Preprocesses ds004584 with auto-detected group labels |

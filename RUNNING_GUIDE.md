@@ -35,8 +35,14 @@ python run_model.py
 # 2. Run a 5-step training demonstration
 python run_model.py --train-demo
 
-# 3. Run all 23 smoke & shape tests
-python test_pipeline.py
+# 3. Run explainability & biomarker attribution demo
+python run_model.py --explain-demo
+
+# 4. Launch interactive Streamlit prototype
+streamlit run app/app.py
+
+# 5. Run all 81 automated tests
+pytest
 ```
 
 ---
@@ -329,13 +335,17 @@ def on_eeg_chunk_received(chunk_2_5s):
 |--------|---------|---------|
 | **Run Inference** | `python run_model.py` | Run forward pass on sample EEG batch |
 | **Run Training Demo** | `python run_model.py --train-demo` | Run 5 synthetic training steps with AdamW |
+| **Run Explainability Demo** | `python run_model.py --explain-demo` | Run gradient attribution & attention extraction |
+| **Launch Streamlit App** | `streamlit run app/app.py` | Launch interactive clinical EEG dashboard |
+| **Run Full Training Loop**| `python -m training.trainer --demo` | Run complete training loop with cosine LR & early stopping |
+| **Run Evaluator Suite** | `python -m training.evaluator` | Compute per-class F1, accuracy, and confusion matrix |
+| **Feature Extraction CLI** | `python -m training.feature_extraction --help` | Extract CNN temporal tokens to NPZ with provenance |
 | **Run on GPU** | `python run_model.py --device cuda` | Run model on NVIDIA GPU |
-| **Run Smoke Tests** | `python test_pipeline.py` | Run 23 automated pipeline tests |
-| **Run Tests (Verbose)** | `python -m unittest test_pipeline.py -v` | Run tests with per-test details |
+| **Run Test Suite** | `pytest` | Run 81 automated pipeline and model tests |
 | **Run Classifier Module** | `python -m models.eeg_classifier` | Test end-to-end model directly |
 | **Run CNN Module** | `python -m models.eeg_cnn` | Test CNN feature extractor directly |
 | **Run Transformer Module** | `python -m models.transformer` | Test Transformer encoder directly |
-| **Compile All Modules** | `python -m compileall preprocessing models` | Verify bytecode syntax integrity |
+| **Compile All Modules** | `python -m compileall preprocessing models training app` | Verify bytecode syntax integrity |
 | **CHB-MIT Preprocessing** | `python -m preprocessing.datasets.chbmit` | Preprocess CHB-MIT epilepsy EDFs |
 | **Alzheimer's Preprocessing** | `python -m preprocessing.datasets.alzheimers` | Preprocess ds004504 Alzheimer's data |
 | **Parkinson's Preprocessing** | `python -m preprocessing.datasets.parkinsons` | Preprocess ds004584 Parkinson's data |
