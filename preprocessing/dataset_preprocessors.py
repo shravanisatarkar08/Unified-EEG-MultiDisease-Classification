@@ -486,6 +486,114 @@ def run_controlled_sample_preprocessing() -> List[PreprocessedEEGSignal]:
     return results
 
 
+# -----------------------------------------------------------------------------
+# FULL DATASET PREPROCESSING RUNNER
+# -----------------------------------------------------------------------------
+
+def run_full_dataset_preprocessing(
+    inventory_csv: str | Path = "datasets/metadata/dataset_inventory.csv",
+    project_root: Optional[str | Path] = None,
+    max_recordings: Optional[int] = None,
+) -> List[PreprocessedEEGSignal]:
+    """Runs dataset-specific preprocessing on all locally available validated EEG recordings.
+
+    Reads dataset_inventory.csv and processes recordings using appropriate preprocessor
+    adapters (CHBMIT, SRMHealthy, Alzheimers, Parkinsons).
+
+    Parameters
+    ----------
+    inventory_csv : str | Path
+        Path to dataset_inventory.csv.
+    project_root : str | Path, optional
+        Root directory used to resolve relative file paths.
+    max_recordings : int, optional
+        Optional maximum number of recordings to process.
+
+    Returns
+    -------
+    List[PreprocessedEEGSignal]
+        List of all successfully preprocessed EEG signals.
+    """
+    root_path = Path(project_root) if project_root else PROJECT_ROOT
+    inv_path = Path(inventory_csv)
+    if not inv_path.is_absolute():
+        inv_path = root_path / inv_path
+
+    if not inv_path.exists():
+        logger.error(f"[Full Preprocessing] Inventory CSV not found: {inv_path}")
+        return []
+
+    df = pd.read_csv(inv_path)
+    logger.info(f"[Full Preprocessing] Loaded {len(df)} records from inventory: {inv_path}")
+
+    # Instantiate preprocessor adapters
+    preprocessors = {
+        'chbmit': CHBMITPreprocessor(),
+        'srm_healthy': SRMHealthyPreprocessor(),
+        'alzheimers': AlzheimersPreprocessor(),
+        'parkinsons': ParkinsonsPreprocessor(),
+    }
+
+    supported_datasets = set(preprocessors.keys())
+    results: List[PreprocessedEEGSignal] = []
+
+    for idx, row in df.iterrows():
+        if max_recordings is not None and len(results) >= max_recordings:
+            logger.info(f"[Full Preprocessing] Reached max_recordings limit ({max_recordings}).")
+            break
+
+        ds_name = str(row['dataset_name']).strip()
+        class_cat = str(row['class_category']).strip()
+        subj_id = str(row['subject_id']).strip()
+        rel_path = str(row['file_path']).strip()
+
+        # Skip unsupported or unavailable datasets (e.g. MODMA/depression, TUAB)
+        if ds_name not in supported_datasets:
+            logger.debug(f"[Full Preprocessing] Skipping unsupported/unavailable dataset: {ds_name}")
+            continue
+
+        # Skip FTD (Frontotemporal Dementia) per project exclusion rule
+        if class_cat in ('ftd', 'F', 'Group F'):
+            logger.debug(f"[Full Preprocessing] Skipping FTD subject '{subj_id}' per exclusion rule.")
+            continue
+
+        # Resolve full recording path
+        full_path = Path(rel_path)
+        if not full_path.is_absolute():
+            full_path = root_path / full_path
+
+        if not full_path.exists():
+            logger.warning(f"[Full Preprocessing] File not found: {full_path} — skipping.")
+            continue
+
+        prep = preprocessors[ds_name]
+
+        try:
+            signal = None
+            if ds_name == 'alzheimers':
+                group_code = 'A' if class_cat == 'alzheimers' else 'C'
+                signal = prep.preprocess_file(str(full_path), subject_id=subj_id, group_code=group_code)
+            elif ds_name == 'parkinsons':
+                group_code = 'PD' if class_cat == 'parkinsons' else 'Control'
+                signal = prep.preprocess_file(str(full_path), subject_id=subj_id, group_code=group_code)
+            elif ds_name == 'chbmit':
+                signal = prep.preprocess_file(str(full_path), subject_id=subj_id)
+            elif ds_name == 'srm_healthy':
+                signal = prep.preprocess_file(str(full_path), subject_id=subj_id)
+
+            if signal is not None:
+                results.append(signal)
+            else:
+                logger.warning(f"[Full Preprocessing] Preprocessing returned None for {ds_name}/{subj_id} ({full_path.name})")
+
+        except Exception as e:
+            logger.error(f"[Full Preprocessing] Error preprocessing {ds_name}/{subj_id} ({full_path.name}): {e}")
+            continue
+
+    logger.info(f"[Full Preprocessing] Successfully preprocessed {len(results)} recordings.")
+    return results
+
+
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
     print("\n--- Running Controlled Sample Preprocessing ---")
