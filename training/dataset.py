@@ -238,7 +238,7 @@ class _RawFileCache:
             if is_edf:
                 raw = mne.io.read_raw_edf(path, preload=False, verbose=False)
             else:
-                raw = mne.io.read_raw_eeglab(path, preload=False, verbose=False)
+                raw = mne.io.read_raw_eeglab(path, preload=True, verbose=False)
         return raw
 
     def close_all(self) -> None:
@@ -253,7 +253,7 @@ class _RawFileCache:
 
 # Module-level cache; each DataLoader worker process gets its own copy after
 # fork(), so there is no cross-process sharing issue.
-_file_cache = _RawFileCache(maxsize=8)
+_file_cache = _RawFileCache(maxsize=2)
 
 
 # ---------------------------------------------------------------------------
@@ -294,7 +294,7 @@ class EEGDataset(Dataset):
         self,
         index_df: pd.DataFrame,
         project_root: Path | str = PROJECT_ROOT_DEFAULT,
-        cache_size: int = 8,
+        cache_size: int = 2,
     ) -> None:
         self.index_df = index_df.reset_index(drop=True)
         self.project_root = Path(project_root)
@@ -416,7 +416,7 @@ def get_dataloaders(
     batch_size: int = 32,
     num_workers: int = 0,
     pin_memory: bool = False,
-    cache_size: int = 8,
+    cache_size: int = 2,
     shuffle_train: bool = True,
 ) -> Dict[str, DataLoader]:
     """
