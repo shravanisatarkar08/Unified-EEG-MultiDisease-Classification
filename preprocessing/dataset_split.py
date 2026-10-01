@@ -246,12 +246,12 @@ def build_model_window_index(
     sample_windows: Optional[List[HarmonizedWindow]] = None
 ) -> List[ModelWindowIndexRow]:
     """Builds lightweight model window index records pointing to source windows."""
-    split_lookup = {a.subject_id: a.split for a in assignments}
+    split_lookup = {(a.dataset_name, a.subject_id): a.split for a in assignments}
     index_rows: List[ModelWindowIndexRow] = []
 
     if sample_windows:
         for w in sample_windows:
-            split = split_lookup.get(w.subject_id, 'train')
+            split = split_lookup.get((w.dataset_name, w.subject_id), 'train')
             label_idx = CLASS_TO_IDX.get(w.class_category, 0)
             missing_str = "|".join(w.missing_channels) if w.missing_channels else ""
 
@@ -272,6 +272,84 @@ def build_model_window_index(
                 missing_channels=missing_str
             )
             index_rows.append(row)
+
+    return index_rows
+
+
+def build_full_model_window_index(
+    assignments: List[SubjectAssignment],
+    inventory_csv: Path = INVENTORY_CSV,
+    window_sec: float = 5.0,
+    overlap: float = 0.5,
+    target_srate: float = 256.0,
+) -> List[ModelWindowIndexRow]:
+    """Builds lightweight model window index for ALL validated recordings in inventory.
+
+    Calculates exact 5-second window segments (50% overlap, 2.5s step) for every
+    validated recording in dataset_inventory.csv without preloading huge array dumps.
+    """
+    if not inventory_csv.exists():
+        raise FileNotFoundError(f"Dataset inventory not found: {inventory_csv}")
+
+    df = pd.read_csv(inventory_csv)
+    # Filter out FTD subjects per exclusion rule
+    df_valid = df[~df['class_category'].isin(EXCLUDED_CLASSES)].copy()
+
+    split_lookup = {(a.dataset_name, a.subject_id): a.split for a in assignments}
+    index_rows: List[ModelWindowIndexRow] = []
+
+    step_sec = window_sec * (1.0 - overlap)  # 2.5s
+
+    for _, row in df_valid.iterrows():
+        ds_name = str(row['dataset_name']).strip()
+        class_cat = str(row['class_category']).strip()
+        subj_id = str(row['subject_id']).strip()
+        source_file = str(row['file_path']).strip()
+        dur_sec = float(row['duration_sec'])
+
+        subject_key = (ds_name, subj_id)
+        if subject_key not in split_lookup:
+            raise ValueError(
+                "Validated recording has no subject-level split assignment: "
+                f"dataset={ds_name!r}, subject={subj_id!r}, source_file={source_file!r}"
+            )
+        if class_cat not in CLASS_TO_IDX:
+            raise ValueError(
+                "Validated recording has no canonical class label mapping: "
+                f"class_category={class_cat!r}, source_file={source_file!r}"
+            )
+
+        split = split_lookup[subject_key]
+        label_idx = CLASS_TO_IDX[class_cat]
+        is_bipolar = (ds_name == 'chbmit')
+        missing_channels = "Pz" if ds_name == 'parkinsons' else ""
+
+        if dur_sec < window_sec:
+            continue
+
+        w_idx = 0
+        w_start = 0.0
+        while w_start + window_sec <= dur_sec + 1e-5:
+            w_end = w_start + window_sec
+            row_obj = ModelWindowIndexRow(
+                split=split,
+                dataset_name=ds_name,
+                subject_id=subj_id,
+                class_category=class_cat,
+                class_label_idx=label_idx,
+                source_file=source_file,
+                window_idx=w_idx,
+                window_start_sec=round(w_start, 4),
+                window_end_sec=round(w_end, 4),
+                sampling_rate=target_srate,
+                n_channels=19,
+                n_samples=int(window_sec * target_srate),
+                is_bipolar_montage=is_bipolar,
+                missing_channels=missing_channels,
+            )
+            index_rows.append(row_obj)
+            w_start += step_sec
+            w_idx += 1
 
     return index_rows
 
@@ -309,7 +387,7 @@ def print_split_summary(assignments: List[SubjectAssignment], index_rows: Option
     print("\n==================================================================================")
     print("                 SUBJECT-LEVEL DATASET SPLIT & PREPARATION REPORT                 ")
     print("==================================================================================")
-    print("Status: DEVELOPMENT SPLIT (Label mapping active; Depression currently UNAVAILABLE)")
+    print("Status: VALIDATED SPLIT (Label mapping active; Depression currently UNAVAILABLE)")
     print("----------------------------------------------------------------------------------")
     print("Class Label Index Mapping:")
     for cls, idx in CLASS_TO_IDX.items():
@@ -330,29 +408,34 @@ def print_split_summary(assignments: List[SubjectAssignment], index_rows: Option
 
     if index_rows:
         df_idx = pd.DataFrame([asdict(r) for r in index_rows])
-        print("\nDevelopment Sample Window Counts per Split:")
+        print("\nModel Window Counts per Split:")
         print(df_idx['split'].value_counts().to_string())
+        print("\nModel Window Counts per Class Category:")
+        print(df_idx['class_category'].value_counts().to_string())
 
     print("==================================================================================\n")
 
 
-def run_subject_level_splitting() -> Tuple[List[SubjectAssignment], List[ModelWindowIndexRow]]:
+def run_subject_level_splitting(full_dataset: bool = True) -> Tuple[List[SubjectAssignment], List[ModelWindowIndexRow]]:
     """Runs dataset inventory subject loading, zero-leakage splitting, and index generation."""
     splitter = SubjectLevelSplitter(train_ratio=0.70, val_ratio=0.15, test_ratio=0.15, random_seed=42)
     subjects_df = splitter.load_valid_subjects()
     assignments = splitter.split_subjects(subjects_df)
     splitter.verify_zero_leakage(assignments)
 
-    # Run on controlled sample harmonization windows
-    from preprocessing.harmonization import run_controlled_sample_harmonization
-    sample_windows = run_controlled_sample_harmonization()
-    index_rows = build_model_window_index(assignments, sample_windows)
-    export_model_index_csv(index_rows)
+    if full_dataset:
+        index_rows = build_full_model_window_index(assignments)
+    else:
+        # Run on controlled sample harmonization windows
+        from preprocessing.harmonization import run_controlled_sample_harmonization
+        sample_windows = run_controlled_sample_harmonization()
+        index_rows = build_model_window_index(assignments, sample_windows)
 
+    export_model_index_csv(index_rows)
     print_split_summary(assignments, index_rows)
     return assignments, index_rows
 
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
-    run_subject_level_splitting()
+    run_subject_level_splitting(full_dataset=True)

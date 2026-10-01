@@ -24,6 +24,7 @@ Run with:
 import sys
 import os
 import unittest
+from pathlib import Path
 import numpy as np
 
 # Ensure we run from project root
@@ -605,8 +606,12 @@ class TestDatasetSplit(unittest.TestCase):
         self.assertEqual(first_row.n_channels, 19)
         self.assertEqual(first_row.n_samples, 1280)
 
-        out_csv = export_model_index_csv(index_rows)
+        import tempfile
+        tmp_csv = Path(tempfile.mktemp(suffix="_test_index.csv"))
+        out_csv = export_model_index_csv(index_rows, output_path=tmp_csv)
         self.assertTrue(out_csv.exists())
+        if out_csv.exists():
+            out_csv.unlink()
 
     def test_unavailable_depression_handling(self):
         from preprocessing.dataset_split import SubjectLevelSplitter, CLASS_TO_IDX
