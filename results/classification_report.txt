@@ -1,0 +1,8 @@
+              precision    recall  f1-score   support
+
+     Healthy     1.0000    1.0000    1.0000       144
+    Epilepsy     1.0000    1.0000    1.0000       157
+
+    accuracy                         1.0000       301
+   macro avg     1.0000    1.0000    1.0000       301
+weighted avg     1.0000    1.0000    1.0000       301

@@ -144,8 +144,12 @@ class EEGTrainer:
         ).to(self.device)
 
         # Loss
-        weights = (torch.tensor(config.class_weights, dtype=torch.float32).to(self.device)
-                   if config.class_weights else None)
+        weights = None
+        if config.class_weights is not None:
+            if isinstance(config.class_weights, torch.Tensor):
+                weights = config.class_weights.to(self.device)
+            else:
+                weights = torch.tensor(config.class_weights, dtype=torch.float32).to(self.device)
         self.criterion = nn.CrossEntropyLoss(weight=weights)
 
         # Optimiser

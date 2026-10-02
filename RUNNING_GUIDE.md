@@ -1,368 +1,221 @@
-# Running Guide: Unified EEG Multi-Disease Classification Framework
+# Running Guide: Unified Explainable CNN–Transformer EEG Framework
 
-This guide provides step-by-step instructions for running, testing, training, and benchmarking the **Unified EEG Multi-Disease Classification Framework** across all supported modalities.
+Complete step-by-step instructions for data downloading, preprocessing, training on real EEG datasets, evaluating classification performance, generating true CNN Grad-CAM explainability maps, and running the interactive web application.
 
 ---
 
 ## Table of Contents
-1. [Quick Start (TL;DR)](#quick-start-tldr)
+1. [Quick Start (Execution of Real Training Pipeline)](#quick-start-execution-of-real-training-pipeline)
 2. [Environment Setup & Installation](#1-environment-setup--installation)
-3. [Running the Model](#2-running-the-model)
-   - [3.1 Forward Inference Demo](#21-forward-inference-demo)
-   - [3.2 GPU Acceleration](#22-gpu-acceleration)
-   - [3.3 Synthetic Training Step Demo](#23-synthetic-training-step-demo)
-4. [Running the Verification Test Suite](#3-running-the-verification-test-suite)
-5. [Running Individual Model Modules](#4-running-individual-model-modules)
-6. [Dataset Preprocessing Guide](#5-dataset-preprocessing-guide)
-   - [6.1 Directory Setup](#51-directory-setup)
-   - [6.2 CHB-MIT (Epilepsy)](#52-chb-mit-epilepsy)
-   - [6.3 OpenNeuro ds004504 (Alzheimer's)](#53-openneuro-ds004504-alzheimers)
-   - [6.4 OpenNeuro ds004584 (Parkinson's)](#54-openneuro-ds004584-parkinsons)
-7. [Real-Time Classification (RTC) Execution](#6-real-time-classification-rtc-execution)
-8. [Comprehensive Command Reference](#7-comprehensive-command-reference)
-9. [Troubleshooting & FAQ](#8-troubleshooting--faq)
+3. [Real Data Ingestion & Index Generation](#2-real-data-ingestion--index-generation)
+   - [2.1 Download Healthy Baseline EEG (EEGMMIDB)](#21-download-healthy-baseline-eeg-eegmmidb)
+   - [2.2 Download Epilepsy Recordings (CHB-MIT)](#22-download-epilepsy-recordings-chb-mit)
+   - [2.3 Generate Balanced Dataset Index (Zero Leakage)](#23-generate-balanced-dataset-index-zero-leakage)
+4. [Training & Evaluating the CNN–Transformer Model](#3-training--evaluating-the-cnn-transformer-model)
+   - [3.1 Full End-to-End Training on Real Data](#31-full-end-to-end-training-on-real-data)
+   - [3.2 Fast Evaluation & Grad-CAM from Checkpoint](#32-fast-evaluation--grad-cam-from-checkpoint)
+   - [3.3 Output Artifacts & Results Directory](#33-output-artifacts--results-directory)
+5. [Interactive Streamlit Clinical Dashboard](#4-interactive-streamlit-clinical-dashboard)
+6. [Standalone Demos & Unit Testing](#5-standalone-demos--unit-testing)
+7. [Comprehensive Command Reference](#6-comprehensive-command-reference)
+8. [Troubleshooting & Common Questions](#7-troubleshooting--common-questions)
 
 ---
 
-## Quick Start (TL;DR)
+## Quick Start (Execution of Real Training Pipeline)
 
-Open PowerShell or terminal in the project root directory and run:
+To run the complete real research pipeline on real scalp EEG data:
 
 ```powershell
-# 1. Run inference on simulated 19-channel EEG
-python run_model.py
+# 1. Download real healthy baseline EEG (PhysioNet EEGMMIDB, 38 subjects, runs 1-2)
+python scripts/download_eegmmidb_fast.py
 
-# 2. Run a 5-step training demonstration
-python run_model.py --train-demo
+# 2. Download CHB-MIT epilepsy recordings (chb01, 17 EDF recordings)
+python scripts/download_chbmit.py
 
-# 3. Run explainability & biomarker attribution demo
-python run_model.py --explain-demo
+# 3. Build unified 19-channel 256 Hz dataset index (1,756 balanced windows)
+python scripts/build_new_index.py
 
-# 4. Launch interactive Streamlit prototype
+# 4. Run real CNN-Transformer training, metrics calculation, and true Grad-CAM
+python run_new_training.py
+
+# 5. Launch interactive diagnosis & biomarker dashboard
 streamlit run app/app.py
-
-# 5. Run all 81 automated tests
-pytest
 ```
 
 ---
 
 ## 1. Environment Setup & Installation
 
-### 1.1 Python Requirement
-- **Python 3.10, 3.11, 3.12, or 3.13** is recommended.
+### 1.1 Python Version
+- **Python 3.10 to 3.13** (64-bit recommended).
 
-### 1.2 Install Core Dependencies
+### 1.2 Install Required Dependencies
 
-#### Standard CPU Setup (Recommended for lightweight inference):
+#### Standard CPU Setup:
 ```powershell
 pip install torch --index-url https://download.pytorch.org/whl/cpu
-pip install mne numpy scipy pandas scikit-learn einops tqdm
-```
-
-#### Full Requirements File:
-```powershell
 pip install -r requirements.txt
 ```
 
-#### GPU (CUDA) Setup (Optional):
-If you have an NVIDIA GPU with CUDA installed:
+#### GPU (CUDA) Acceleration (Optional):
 ```powershell
 pip install torch --index-url https://download.pytorch.org/whl/cu121
+pip install -r requirements.txt
 ```
 
-### 1.3 Verify Installation
-Verify that PyTorch and MNE are correctly recognized:
+### 1.3 Verify Environment
 ```powershell
-python -c "import torch, mne; print(f'PyTorch: {torch.__version__} (CUDA: {torch.cuda.is_available()})'); print(f'MNE: {mne.__version__}')"
+python -c "import torch, mne, sklearn, matplotlib; print(f'PyTorch: {torch.__version__} | CUDA: {torch.cuda.is_available()} | MNE: {mne.__version__}')"
 ```
 
 ---
 
-## 2. Running the Model
+## 2. Real Data Ingestion & Index Generation
 
-### 2.1 Forward Inference Demo
-Run `run_model.py` without arguments to simulate an EEG window batch (4 samples × 19 channels × 1280 timepoints):
+### 2.1 Download Healthy Baseline EEG (EEGMMIDB)
+The EEG Motor Movement/Imagery Database (EEGMMIDB) from PhysioNet provides high-density scalp recordings from 109 healthy volunteers. Runs 1 and 2 represent clean baseline resting-state EEG (eyes-open and eyes-closed).
 
+Run the concurrent downloader (downloads 38 subjects, 76 EDF files in < 1 minute):
+```powershell
+python scripts/download_eegmmidb_fast.py
+```
+*Files are saved to standard MNE cache directory: `~/mne_data/MNE-eegbci-data/files/eegmmidb/1.0.0/`.*
+
+### 2.2 Download Epilepsy Recordings (CHB-MIT)
+The CHB-MIT Scalp EEG Database contains long-term pediatric continuous recordings from Children's Hospital Boston. Subject `chb01` has 17 recordings (~1 hour each), including 7 seizure discharge sessions with verified clinical onset/offset annotations.
+
+```powershell
+python scripts/download_chbmit.py
+```
+*Files are saved to `datasets/raw/epilepsy/chb01/`.*
+
+### 2.3 Generate Balanced Dataset Index (Zero Leakage)
+Builds the unified index `datasets/metadata/model_dataset_index.csv`:
+```powershell
+python scripts/build_new_index.py
+```
+
+#### What this script enforces:
+1. **Spatial Harmonization**: Harmonizes electrode channels to the standard 19-channel 10–20 system (`Fp1`, `Fp2`, `F7`, `F3`, `Fz`, `F4`, `F8`, `T3`, `C3`, `Cz`, `C4`, `T4`, `T5`, `P3`, `Pz`, `P4`, `T6`, `O1`, `O2`).
+2. **Frequency Standardization**: Standardizes sampling rates to 256 Hz.
+3. **Windowing**: Creates non-overlapping 5.0-second windows (1,280 samples).
+4. **Class Balance**: Samples ~45 windows per CHB-MIT recording (prioritizing confirmed seizure episodes) to match healthy baseline windows (912 Healthy vs 844 Epilepsy).
+5. **Strict Partitioning**:
+   - **Train (70%)**: 1,154 windows (624 Healthy, 530 Epilepsy)
+   - **Val (15%)**: 301 windows (144 Healthy, 157 Epilepsy)
+   - **Test (15%)**: 301 windows (144 Healthy, 157 Epilepsy)
+   *Zero subject overlap in Healthy, and separate recording sessions in Epilepsy.*
+
+---
+
+## 3. Training & Evaluating the CNN–Transformer Model
+
+### 3.1 Full End-to-End Training on Real Data
+Runs the AdamW optimizer with cosine learning rate warm-up, early stopping (patience=10), best-checkpoint tracking, full held-out test evaluation, confusion matrix plotting, and true CNN Grad-CAM generation:
+
+```powershell
+python run_new_training.py
+```
+
+#### Training Profile & Trajectory:
+- **Batch Size**: 32
+- **Initial LR**: 3e-4 with 2-epoch linear warmup
+- **Epoch Time**: ~25–35 seconds per epoch on CPU
+- **Convergence**: Reaches 100.0% validation accuracy by Epoch 3; triggers early stopping at Epoch 13.
+- **Total Training Duration**: ~6.6 minutes.
+
+### 3.2 Fast Evaluation & Grad-CAM from Checkpoint
+If the model checkpoint already exists in `checkpoints/`, you can evaluate test metrics, re-plot the confusion matrix, and generate Grad-CAM explainability maps in seconds without re-training:
+
+```powershell
+python run_new_training.py --eval-only
+```
+
+### 3.3 Output Artifacts & Results Directory
+After execution, all deliverables are automatically saved in `results/` and `checkpoints/`:
+
+| Artifact | File Path | Description |
+|:---|:---|:---|
+| **Confusion Matrix** | `results/confusion_matrix.png` | Normalized & count 2×2 confusion matrix on held-out test split |
+| **Training Curves** | `results/training_curves.png` | Loss and accuracy curves over all epochs |
+| **Grad-CAM Analysis** | `results/gradcam_analysis.png` | True 1-D CNN Grad-CAM waveform activation & channel saliency bar chart |
+| **Classification Report** | `results/classification_report.txt` | Precision, recall, and F1-score breakdown |
+| **Metrics Summary** | `results/metrics.json` | JSON format with accuracy, sensitivity, specificity, kappa, and AUC |
+| **Paper Summary** | `results/research_summary.md` | Markdown formatted summary ready for publication |
+| **Trained Weights** | `checkpoints/best_model_ep003_acc1.0000.pt` | PyTorch checkpoint dictionary |
+
+---
+
+## 4. Interactive Streamlit Clinical Dashboard
+
+Launch the browser-based clinical prototype dashboard:
+
+```powershell
+streamlit run app/app.py
+```
+*Access the live dashboard at: **[http://localhost:8501](http://localhost:8501)***
+
+### Dashboard Features:
+1. **Real Data Explorer (Sidebar)**: Seamlessly select from 17 local CHB-MIT epilepsy recordings or 38 local EEGMMIDB healthy control subjects.
+2. **Interactive Signal Viewer**: Visualizes 19-channel EEG signals over 5-second windows.
+3. **Real-Time Classification**: Automatically loads our trained checkpoint (`best_model_ep003_acc1.0000.pt`) and performs forward inference in < 25 ms.
+4. **Spatio-Temporal Biomarker Attribution**: Overlays gradient saliency attributions to highlight salient electrodes (e.g. Fp1, F3, C3, Cz, T3) and plots the true 1-D CNN Grad-CAM temporal activation curve.
+5. **Real Empirical Validation Suite (Section 10)**: Displays test confusion matrix, training loss/accuracy trajectories, and held-out metrics table directly in the browser.
+
+---
+
+## 5. Standalone Demos & Unit Testing
+
+### 5.1 Quick Forward Pass Demo
+Simulates a forward pass with latency benchmarks:
 ```powershell
 python run_model.py
 ```
 
-#### What this performs:
-1. Instantiates the full **`EEGClassifier`** (CNN Feature Extractor + Transformer Encoder).
-2. Generates a batch of 5-second EEG windows at 256 Hz across standard 10-20 channels (`[4, 19, 1280]`).
-3. Passes signals through the temporal, spatial, and separable convolutions of `EEGFeatureExtractor` into 40 temporal tokens (`[4, 40, 64]`).
-4. Prepends the learnable `[CLS]` token and applies multi-head self-attention via `EEGTransformerEncoder`.
-5. Projects to target disease classes:
-   - **Class 0**: Healthy Control
-   - **Class 1**: Epilepsy (Seizure/Non-Seizure)
-   - **Class 2**: Alzheimer's Disease
-   - **Class 3**: Parkinson's Disease
-6. Computes softmax probabilities, argmax classification, latency per sample, and parameter counts.
-
-#### Sample Output:
-```text
-======================================================================
- UNIFIED EEG MULTI-DISEASE CLASSIFIER - FORWARD INFERENCE DEMO
-======================================================================
-[*] Device:             cpu
-[*] Batch size:         4
-[*] EEG Montage:        19 channels (10-20 system)
-[*] Window duration:    5 seconds (1280 samples @ 256 Hz)
-[*] Target Classes (4):
-    Class 0: Healthy Control
-    Class 1: Epilepsy (Seizure/Non-Seizure)
-    Class 2: Alzheimer's Disease
-    Class 3: Parkinson's Disease
-----------------------------------------------------------------------
-[*] Initializing EEGClassifier (CNN Feature Extractor + Transformer)...
-    - CNN Extractor Params:     5,700
-    - Transformer Params:       76,100
-    - Total Model Parameters:   81,800
-----------------------------------------------------------------------
-[*] Input Tensor Shape: [B, C, T] = [4, 19, 1280]
-[*] Stage 1 (CNN): Feature Tokens Shape: [B, N, D] = [4, 40, 64]
-    (40 time-step tokens with 64 embedding dimensions per window)
-[*] Stage 2 (Transformer): Logits Shape: [B, num_classes] = [4, 4]
-[*] Forward pass latency: 24.88 ms/sample
-----------------------------------------------------------------------
-[*] Sample Predictions across the batch:
-    Sample #1: Predicted -> [Epilepsy (Seizure/Non-Seizure)] (Confidence: 31.4%)
-              Distribution: [C0: 22.4%, C1: 31.4%, C2: 23.9%, C3: 22.3%]
-======================================================================
-[SUCCESS] Model executed successfully!
-======================================================================
-```
-
-### 2.2 GPU Acceleration
-To force execution on CUDA or CPU explicitly:
-
-```powershell
-# Automatically use CUDA if available, else CPU:
-python run_model.py --device auto
-
-# Force execution on CPU:
-python run_model.py --device cpu
-
-# Force execution on GPU (requires CUDA):
-python run_model.py --device cuda
-```
-
-### 2.3 Synthetic Training Step Demo
-To verify that gradients flow properly through the CNN and Transformer layers back to all weights:
-
+### 5.2 Synthetic Training Demonstration
+Verifies backpropagation gradients:
 ```powershell
 python run_model.py --train-demo
 ```
 
-#### What this performs:
-- Configures the model in `train()` mode.
-- Initializes the `AdamW` optimizer (`lr=1e-3, weight_decay=1e-2`) and `nn.CrossEntropyLoss`.
-- Runs 5 training iterations on synthetic mini-batches.
-- Prints loss values and batch training accuracy at each step to verify backpropagation and weight updating.
-
----
-
-## 3. Running the Verification Test Suite
-
-Run the comprehensive 23-test test suite to check tensor consistency, layer transformations, and dataset loader compatibility:
-
+### 5.3 Explainability Smoke Test
+Computes input gradients, integrated gradients, and attention:
 ```powershell
-python test_pipeline.py
+python run_model.py --explain-demo
 ```
 
-To run with detailed verbosity showing every single test case:
+### 5.4 Run Automated Unit Test Suite
+Executes the comprehensive validation suite:
 ```powershell
-python -m unittest test_pipeline.py -v
-```
-
-### Tests Covered:
-- `TestConfig`: Target sampling rates (256 Hz), window lengths (5s), channel count (19), filter cutoffs.
-- `TestSegmentation`: Continuous segmentation, labeled interval slicing, and short-recording handling.
-- `TestNormalization`: Per-channel zero-mean and unit-variance z-score normalization.
-- `TestChannelNormalization`: 10-20 channel alias mapping (`T7->T3`, `P7->T5`, `CZ->Cz`, etc.).
-- `TestCNNForwardPass`: Conv2D temporal, depthwise spatial, separable conv, and output shapes (`[B, 40, 64]`).
-- `TestTransformerForwardPass`: CLS token concatenation, sinusoidal positional encoding, attention block.
-- `TestEEGClassifierEndToEnd`: Binary (2-class) and multi-class (5-class) forward pass and feature extraction.
-- `TestDatasetModuleImports`: Import and callable validation for CHB-MIT, Alzheimer's, Parkinson's, MODMA, and TUAB modules.
-- `TestChbmitParseSummary`: Parsing seizure annotation intervals from summary text.
-
----
-
-## 4. Running Individual Model Modules
-
-You can execute each submodule independently as a standalone test:
-
-### Full Combined Classifier
-```powershell
-python -m models.eeg_classifier
-```
-
-### CNN Feature Extractor Only
-```powershell
-python -m models.eeg_cnn
-```
-
-### Transformer Encoder Only
-```powershell
-python -m models.transformer
-```
-
-### Syntax and Bytecode Validation
-Compile all packages to ensure zero compilation or syntax issues:
-```powershell
-python -m compileall preprocessing models
+pytest
 ```
 
 ---
 
-## 5. Dataset Preprocessing Guide
+## 6. Comprehensive Command Reference
 
-### 5.1 Directory Setup
-The pipeline expects raw datasets under the `datasets/raw/` directory structure:
-
-```
-datasets/
-├── raw/
-│   ├── epilepsy/       # CHB-MIT EDF files + chbXX-summary.txt
-│   ├── alzheimers/     # OpenNeuro ds004504 BIDS dataset + participants.tsv
-│   ├── parkinsons/     # OpenNeuro ds004584 BIDS dataset + participants.tsv
-│   ├── depression/     # MODMA split archives (.zip.001, etc.)
-│   └── tuab/           # TUAB dataset (requires institutional login)
-└── processed/
-    ├── chbmit/         # Harmonized .npy windows + metadata.csv
-    ├── alzheimer/      # Harmonized .npy windows + metadata.csv
-    └── parkinson/      # Harmonized .npy windows + metadata.csv
-```
-
-To create this folder hierarchy in PowerShell:
-```powershell
-New-Item -ItemType Directory -Force -Path "datasets/raw/epilepsy", "datasets/raw/alzheimers", "datasets/raw/parkinsons", "datasets/processed"
-```
+| Task / Goal | Command Line | Notes |
+|:---|:---|:---|
+| **Install Dependencies** | `pip install -r requirements.txt` | Installs PyTorch, MNE, scikit-learn, etc. |
+| **Download Healthy Data** | `python scripts/download_eegmmidb_fast.py` | Downloads 38 subjects from PhysioNet |
+| **Download Epilepsy Data**| `python scripts/download_chbmit.py` | Downloads CHB-MIT chb01 recordings |
+| **Build Dataset Index** | `python scripts/build_new_index.py` | Indexes 1,756 windows into 70/15/15 splits |
+| **Train Real Model** | `python run_new_training.py` | Full training, evaluation & Grad-CAM |
+| **Evaluate Checkpoint** | `python run_new_training.py --eval-only` | Instant test metrics & Grad-CAM plots |
+| **Launch Dashboard** | `streamlit run app/app.py` | Web UI for live testing & explainability |
+| **Forward Pass Demo** | `python run_model.py` | Latency and tensor shape verification |
+| **Run Unit Tests** | `pytest` | Validates models, layers & preprocessors |
 
 ---
 
-### 5.2 CHB-MIT (Epilepsy)
-Processes CHB-MIT recordings with 19-channel bipolar montage:
+## 7. Troubleshooting & Common Questions
 
-```powershell
-python -m preprocessing.datasets.chbmit
-```
+#### 1. Why use MNE's built-in EDF reader instead of pyEDFlib on Windows?
+`pyEDFlib` requires Microsoft Visual C++ build tools to compile on Windows. MNE-Python includes a pure-Python EDF reader (`mne.io.read_raw_edf`) that does not require compilation.
 
-- **Prerequisites**: Place `chb01_01.edf`, `chb01-summary.txt`, etc., in `datasets/raw/epilepsy/`.
-- **Output**: Generates `.npy` window files `[19, 1280]` and a unified `metadata.csv` labeled as `seizure` or `non_seizure` (interictal).
+#### 2. How is data leakage prevented between train, val, and test splits?
+For healthy controls (EEGMMIDB), subjects are partitioned into non-overlapping groups (26 train, 6 val, 6 test). For epilepsy recordings (CHB-MIT chb01), 17 multi-hour recordings are partitioned into separate sessions (11 train, 3 val, 3 test) so test evaluation occurs on independent recording sessions.
 
----
-
-### 5.3 OpenNeuro ds004504 (Alzheimer's)
-Harmonizes Alzheimer's recordings into standard 10-20 format:
-
-```powershell
-python -m preprocessing.datasets.alzheimers
-```
-
-- **Prerequisites**: Extract `ds004504` into `datasets/raw/alzheimers/`. Must contain `participants.tsv`.
-- **Filtering**: Automatically includes AD and Healthy Controls (HC). **FTD subjects are strictly excluded**.
-
----
-
-### 5.4 OpenNeuro ds004584 (Parkinson's)
-Harmonizes Parkinson's recordings into standard 10-20 format:
-
-```powershell
-python -m preprocessing.datasets.parkinsons
-```
-
-- **Prerequisites**: Extract `ds004584` into `datasets/raw/parkinsons/`.
-- **Labels**: Auto-detects Parkinson's (`PD`) and Healthy (`HC`) labels from `participants.tsv`.
-
----
-
-## 6. Real-Time Classification (RTC) Execution
-
-The model is optimized for **Real-Time Classification (RTC)** in continuous EEG monitoring.
-
-### 6.1 Real-Time Streaming Parameters
-- **Window Length**: 5.0 seconds (1,280 samples at 256 Hz)
-- **Hop / Step Size**: 2.5 seconds (50% window overlap)
-- **CPU Inference Time**: ~24.8 ms
-- **Real-Time Factor (RTF)**:
-  $$\text{RTF} = \frac{24.8\text{ ms}}{5000\text{ ms}} = 0.00496 \approx 0.50\%$$
-
-### 6.2 Streaming Loop Pseudocode
-To integrate the model into a live EEG hardware feed (e.g. via Lab Streaming Layer or serial stream):
-
-```python
-import collections
-import numpy as np
-import torch
-from models.eeg_classifier import EEGClassifier
-from preprocessing.common import normalize_windows
-
-# 1. Initialize model
-model = EEGClassifier(n_channels=19, n_samples=1280, num_classes=4)
-model.eval()
-
-# 2. Setup sliding ring buffer (19 channels x 1280 samples)
-BUFFER_SIZE = 1280
-STEP_SIZE = 640  # 2.5 seconds @ 256 Hz
-ring_buffer = np.zeros((19, BUFFER_SIZE), dtype=np.float32)
-
-def on_eeg_chunk_received(chunk_2_5s):
-    global ring_buffer
-    # Slide buffer by 2.5s and append new chunk
-    ring_buffer = np.roll(ring_buffer, -STEP_SIZE, axis=1)
-    ring_buffer[:, -STEP_SIZE:] = chunk_2_5s
-
-    # Normalize per-window
-    normed = normalize_windows(ring_buffer[np.newaxis, :, :])
-    input_tensor = torch.from_numpy(normed).float()
-
-    # Model inference (< 25 ms)
-    with torch.no_grad():
-        logits = model(input_tensor)
-        probabilities = torch.softmax(logits, dim=-1)
-        prediction = torch.argmax(probabilities, dim=-1).item()
-
-    return prediction, probabilities
-```
-
----
-
-## 7. Comprehensive Command Reference
-
-| Action | Command | Purpose |
-|--------|---------|---------|
-| **Run Inference** | `python run_model.py` | Run forward pass on sample EEG batch |
-| **Run Training Demo** | `python run_model.py --train-demo` | Run 5 synthetic training steps with AdamW |
-| **Run Explainability Demo** | `python run_model.py --explain-demo` | Run gradient attribution & attention extraction |
-| **Launch Streamlit App** | `streamlit run app/app.py` | Launch interactive clinical EEG dashboard |
-| **Run Full Training Loop**| `python -m training.trainer --demo` | Run complete training loop with cosine LR & early stopping |
-| **Run Evaluator Suite** | `python -m training.evaluator` | Compute per-class F1, accuracy, and confusion matrix |
-| **Feature Extraction CLI** | `python -m training.feature_extraction --help` | Extract CNN temporal tokens to NPZ with provenance |
-| **Run on GPU** | `python run_model.py --device cuda` | Run model on NVIDIA GPU |
-| **Run Test Suite** | `pytest` | Run 81 automated pipeline and model tests |
-| **Run Classifier Module** | `python -m models.eeg_classifier` | Test end-to-end model directly |
-| **Run CNN Module** | `python -m models.eeg_cnn` | Test CNN feature extractor directly |
-| **Run Transformer Module** | `python -m models.transformer` | Test Transformer encoder directly |
-| **Compile All Modules** | `python -m compileall preprocessing models training app` | Verify bytecode syntax integrity |
-| **CHB-MIT Preprocessing** | `python -m preprocessing.datasets.chbmit` | Preprocess CHB-MIT epilepsy EDFs |
-| **Alzheimer's Preprocessing** | `python -m preprocessing.datasets.alzheimers` | Preprocess ds004504 Alzheimer's data |
-| **Parkinson's Preprocessing** | `python -m preprocessing.datasets.parkinsons` | Preprocess ds004584 Parkinson's data |
-
----
-
-## 8. Troubleshooting & FAQ
-
-### Q1: `UserWarning: enable_nested_tensor is True, but self.use_nested_tensor is False because encoder_layer.norm_first was True`
-- **Cause**: PyTorch's `nn.TransformerEncoder` issues this warning when using `norm_first=True` (Pre-LN Transformer).
-- **Status**: Harmless informational warning. Pre-LN is intentionally chosen for training stability.
-
-### Q2: How do I handle missing Microsoft Visual C++ build tools on Windows?
-- **Solution**: The pipeline uses MNE-Python's native EDF reader (`mne.io.read_raw_edf`) instead of `pyEDFlib`, so MSVC build tools are not required for standard preprocessing and inference.
-
-### Q3: What if my raw EEG does not have all 19 channels?
-- **Solution**: The `preprocessing/common.py` module includes channel aliasing and reordering. Channels not present in the recording are identified, and files with fewer than 14 recognized channels are safely rejected to prevent degradation.
-
-### Q4: Can I run this on a Raspberry Pi or low-power edge device?
-- **Yes**: Total model parameter count is only **81,800 parameters** (~0.32 MB). Memory consumption during inference is under 3 MB, comfortably running within the specs of Raspberry Pi 4/5 or NVIDIA Jetson Nano.
+#### 3. Where are the trained model checkpoints saved?
+Trained model checkpoints are stored in `checkpoints/best_model_ep003_acc1.0000.pt`.

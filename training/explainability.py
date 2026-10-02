@@ -188,6 +188,87 @@ class EEGExplainer:
         cls_attn = avg_attn[0, 1:].numpy()            # [N_tokens]
         return cls_attn
 
+    # ------------------------------------------------------------------
+    # 4. True CNN Grad-CAM
+    # ------------------------------------------------------------------
+
+    def grad_cam(
+        self,
+        eeg: torch.Tensor,
+        target_class: Optional[int] = None,
+    ) -> np.ndarray:
+        """Compute true 1-D CNN Grad-CAM attribution over the time domain.
+
+        Hooks into the final separable convolution block of the CNN backbone,
+        computes gradients w.r.t target class, performs global average pooling
+        to obtain feature weights alpha_k, computes the positive linear combination (ReLU),
+        and interpolates back to full EEG temporal resolution [T].
+
+        Returns
+        -------
+        numpy array [T] containing normalized [0, 1] Grad-CAM temporal activation.
+        """
+        if eeg.dim() == 2:
+            eeg = eeg.unsqueeze(0)
+        eeg = eeg.to(self.device).requires_grad_(True)
+
+        activations = []
+        gradients = []
+
+        def forward_hook(module, inp, out):
+            activations.append(out)
+
+        def backward_hook(module, grad_in, grad_out):
+            gradients.append(grad_out[0])
+
+        target_layer = self.model.cnn.separable.pointwise
+        h_fwd = target_layer.register_forward_hook(forward_hook)
+        h_bwd = target_layer.register_full_backward_hook(backward_hook)
+
+        try:
+            logits = self.model(eeg)
+            if target_class is None:
+                target_class = int(logits.argmax(dim=-1)[0].item())
+
+            self.model.zero_grad()
+            score = logits[:, target_class].sum()
+            score.backward()
+
+            if not gradients or not activations:
+                return np.zeros(eeg.shape[-1], dtype=np.float32)
+
+            grads = gradients[0].detach()  # [B, F2, 1, T_conv]
+            acts  = activations[0].detach() # [B, F2, 1, T_conv]
+
+            # Global average pool gradients over spatial & temporal dimensions
+            alpha = grads.mean(dim=[-2, -1], keepdim=True)  # [B, F2, 1, 1]
+
+            # Weighted combination of feature maps + ReLU
+            cam = (alpha * acts).sum(dim=1, keepdim=True)   # [B, 1, 1, T_conv]
+            cam = F.relu(cam)
+
+            # Interpolate to full temporal resolution [B, 1, T_samples]
+            cam_1d = cam.squeeze(2)  # [B, 1, T_conv]
+            cam_interp = F.interpolate(
+                cam_1d,
+                size=eeg.shape[-1],
+                mode="linear",
+                align_corners=False,
+            )
+            cam_np = cam_interp.squeeze().cpu().numpy()
+
+            # Normalize [0, 1]
+            c_min, c_max = cam_np.min(), cam_np.max()
+            if c_max > c_min:
+                cam_np = (cam_np - c_min) / (c_max - c_min)
+            else:
+                cam_np = np.zeros_like(cam_np)
+
+            return cam_np
+        finally:
+            h_fwd.remove()
+            h_bwd.remove()
+
 
 if __name__ == "__main__":
     import sys
