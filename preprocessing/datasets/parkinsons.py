@@ -55,7 +55,7 @@ def _classify_group(raw_group: str):
 
 
 def _read_participants(raw_dir):
-    """Parse participants.tsv to {participant_id: label} (only known groups)."""
+    """Parse participants.tsv to {participant_id: label}."""
     tsv_path = os.path.join(raw_dir, 'participants.tsv')
     if not os.path.exists(tsv_path):
         logger.warning(f"participants.tsv not found: {tsv_path}")
@@ -63,15 +63,24 @@ def _read_participants(raw_dir):
 
     participants = {}
     unknown_groups = set()
+
     with open(tsv_path, 'r', encoding='utf-8') as f:
         reader = csv.DictReader(f, delimiter='\t')
-        # Accept either 'group' or 'diagnosis' column
+
         for row in reader:
             pid = row.get('participant_id', '').strip()
-            grp_raw = (row.get('group') or row.get('diagnosis') or '').strip()
+            grp_raw = (
+                row.get('GROUP')
+                or row.get('group')
+                or row.get('diagnosis')
+                or ''
+            ).strip()
+
             if not pid:
                 continue
+
             label = _classify_group(grp_raw)
+
             if label:
                 participants[pid] = label
             else:
@@ -79,9 +88,14 @@ def _read_participants(raw_dir):
 
     n_pd = sum(1 for l in participants.values() if l == 'parkinson')
     n_hc = sum(1 for l in participants.values() if l == 'healthy')
+
     logger.info(f"ds004584 participants: PD={n_pd}, HC={n_hc}")
+
     if unknown_groups:
-        logger.warning(f"Unrecognised group codes (excluded): {unknown_groups}")
+        logger.warning(
+            f"Unrecognised group codes (excluded): {unknown_groups}"
+        )
+
     return participants
 
 

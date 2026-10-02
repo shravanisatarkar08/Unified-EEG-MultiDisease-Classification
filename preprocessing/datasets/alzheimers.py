@@ -1,4 +1,4 @@
-﻿"""
+"""
 Alzheimer's disease EEG dataset preprocessor.
 Dataset: OpenNeuro ds004504 (Alzheimer's EEG)
 
@@ -59,7 +59,7 @@ def _read_participants(raw_dir):
         reader = csv.DictReader(f, delimiter='\t')
         for row in reader:
             pid = row.get('participant_id', '').strip()
-            grp = row.get('group', '').strip().upper()
+            grp = row.get('Group', row.get('group', '')).strip().upper()
             if pid:
                 participants[pid] = grp
     n_ad  = sum(1 for g in participants.values() if g == GROUP_ALZHEIMER)
