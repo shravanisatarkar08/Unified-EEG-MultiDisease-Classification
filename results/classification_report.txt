@@ -1,10 +1,10 @@
 Class                 Precision     Recall   F1-Score    Support
 -----------------------------------------------------------------
-Healthy                  0.7671     0.6037     0.6756        540
-Epilepsy                 0.0000     0.0000     0.0000          0
-Alzheimer's              0.6020     1.0000     0.7516        180
-Parkinson's              0.8360     0.8870     0.8607        540
-Depression               0.9825     0.8000     0.8819        210
+Healthy                  0.7692     0.7222     0.7450        540
+Epilepsy                 1.0000     1.0000     1.0000         55
+Alzheimer's              0.6226     0.9167     0.7416        180
+Parkinson's              0.9069     0.9019     0.9044        540
+Depression               1.0000     0.7667     0.8679        210
 -----------------------------------------------------------------
-Macro Average                                  0.6340       1470
-Weighted Average                               0.7824       1470
+Macro Average                                  0.8518       1525
+Weighted Average                               0.8271       1525

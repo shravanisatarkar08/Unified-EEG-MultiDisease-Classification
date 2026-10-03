@@ -1,10 +1,10 @@
 # Final Experimental Summary: Unified CNN–Transformer Multi-Disease EEG Classification
 
-**Date:** 2026-10-03 10:34:38  
+**Date:** 2026-10-03 12:03:57  
 **Framework:** Unified Explainable CNN–Transformer Framework for Multi-Disease EEG Classification  
 **Architecture:** 1D Spatial-Temporal CNN Backbone + Multi-Head Self-Attention Transformer Encoder  
 **Number of Target Classes:** 5 Classes (Healthy, Epilepsy, Alzheimer's Disease, Parkinson's Disease, Depression)  
-**Total Harmonized Windows:** 10,105 windows (19 channels, 256 Hz, 5-second windows = 1,280 timepoints)  
+**Total Harmonized Windows:** 10,488 windows (19 channels, 256 Hz, 5-second windows = 1,280 timepoints)  
 
 ---
 
@@ -19,22 +19,22 @@ All EEG recordings are harmonized to the standard 19-channel 10-20 montage (`Fp1
 | **Alzheimer's Disease** | 2 | OpenNeuro `ds004504` (AD Cohort) | 1,080 | 720 | 180 | 180 | Subject-Level (Zero Overlap) |
 | **Parkinson's Disease** | 3 | OpenNeuro `ds004584` (PD Cohort) | 3,000 | 2,070 | 390 | 540 | Subject-Level (Zero Overlap) |
 | **Depression (MDD)** | 4 | NEMAR `nm000114` / MODMA Cohort | 1,860 | 1,260 | 390 | 210 | Subject-Level (Zero Overlap) |
-| **TOTAL** | - | **Unified 5-Cohort Benchmark** | **10,105** | **7,195** | **1,440** | **1,470** | **Strict Zero Subject Leakage** |
+| **TOTAL** | - | **Unified 5-Cohort Benchmark** | **10,488** | **7,466** | **1,497** | **1,525** | **Strict Zero Subject Leakage** |
 
 ---
 
 ## 2. Held-Out Test Set Performance
 
-The model was evaluated on **1,470 independent test windows** from held-out subjects never seen during training or hyperparameter tuning.
+The model was evaluated on **1,525 independent test windows** from held-out subjects never seen during training or hyperparameter tuning.
 
 | Metric | Score | Clinical / Technical Interpretation |
 |:---|:---:|:---|
-| **Overall Accuracy** | **78.44%** | Overall correct window prediction rate across classes |
-| **Balanced Accuracy** | **82.27%** | Macro-average of recall across all disease classes |
-| **Macro F1-Score** | **0.6340** | Harmonic mean of precision and recall (unweighted) |
-| **Weighted F1-Score** | **0.7824** | Support-weighted multi-class F1-score |
-| **Macro ROC-AUC (OVR)** | **0.9498** | Multi-class One-vs-Rest Area Under the ROC Curve |
-| **Cohen's Kappa (κ)** | **0.6959** | Inter-class agreement metric exceeding chance agreement |
+| **Overall Accuracy** | **82.49%** | Overall correct window prediction rate across classes |
+| **Balanced Accuracy** | **86.15%** | Macro-average of recall across all disease classes |
+| **Macro F1-Score** | **0.8518** | Harmonic mean of precision and recall (unweighted) |
+| **Weighted F1-Score** | **0.8271** | Support-weighted multi-class F1-score |
+| **Macro ROC-AUC (OVR)** | **0.9648** | Multi-class One-vs-Rest Area Under the ROC Curve |
+| **Cohen's Kappa (κ)** | **0.7572** | Inter-class agreement metric exceeding chance agreement |
 
 ---
 
@@ -43,14 +43,14 @@ The model was evaluated on **1,470 independent test windows** from held-out subj
 ```
 Class                 Precision     Recall   F1-Score    Support
 -----------------------------------------------------------------
-Healthy                  0.7671     0.6037     0.6756        540
-Epilepsy                 0.0000     0.0000     0.0000          0
-Alzheimer's              0.6020     1.0000     0.7516        180
-Parkinson's              0.8360     0.8870     0.8607        540
-Depression               0.9825     0.8000     0.8819        210
+Healthy                  0.7692     0.7222     0.7450        540
+Epilepsy                 1.0000     1.0000     1.0000         55
+Alzheimer's              0.6226     0.9167     0.7416        180
+Parkinson's              0.9069     0.9019     0.9044        540
+Depression               1.0000     0.7667     0.8679        210
 -----------------------------------------------------------------
-Macro Average                                  0.6340       1470
-Weighted Average                               0.7824       1470
+Macro Average                                  0.8518       1525
+Weighted Average                               0.8271       1525
 ```
 
 ---

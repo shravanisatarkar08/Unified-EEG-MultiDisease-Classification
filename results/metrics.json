@@ -9,64 +9,64 @@
     "Depression"
   ],
   "cohort_sizes": {
-    "train_windows": 7195,
-    "val_windows": 1440,
-    "test_windows": 1470,
-    "total_windows": 10105
+    "train_windows": 7466,
+    "val_windows": 1497,
+    "test_windows": 1525,
+    "total_windows": 10488
   },
   "test_metrics": {
-    "accuracy": 0.7844,
-    "balanced_accuracy": 0.8227,
-    "macro_f1": 0.634,
-    "weighted_f1": 0.7824,
-    "cohen_kappa": 0.6959,
-    "macro_roc_auc": 0.9498
+    "accuracy": 0.8249,
+    "balanced_accuracy": 0.8615,
+    "macro_f1": 0.8518,
+    "weighted_f1": 0.8271,
+    "cohen_kappa": 0.7572,
+    "macro_roc_auc": 0.9648
   },
   "val_metrics": {
-    "accuracy": 0.7472,
-    "balanced_accuracy": 0.7943,
-    "macro_f1": 0.6004,
-    "weighted_f1": 0.7369
+    "accuracy": 0.7662,
+    "balanced_accuracy": 0.8317,
+    "macro_f1": 0.7996,
+    "weighted_f1": 0.7587
   },
   "per_class_metrics": {
     "healthy": {
       "class_id": 0,
       "display_name": "Healthy",
-      "precision": 0.7671,
-      "recall": 0.6037,
-      "f1_score": 0.6756,
+      "precision": 0.7692,
+      "recall": 0.7222,
+      "f1_score": 0.745,
       "test_support": 540
     },
     "epilepsy": {
       "class_id": 1,
       "display_name": "Epilepsy",
-      "precision": 0.0,
-      "recall": 0.0,
-      "f1_score": 0.0,
-      "test_support": 0
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1_score": 1.0,
+      "test_support": 55
     },
     "alzheimers": {
       "class_id": 2,
       "display_name": "Alzheimer's",
-      "precision": 0.602,
-      "recall": 1.0,
-      "f1_score": 0.7516,
+      "precision": 0.6226,
+      "recall": 0.9167,
+      "f1_score": 0.7416,
       "test_support": 180
     },
     "parkinsons": {
       "class_id": 3,
       "display_name": "Parkinson's",
-      "precision": 0.836,
-      "recall": 0.887,
-      "f1_score": 0.8607,
+      "precision": 0.9069,
+      "recall": 0.9019,
+      "f1_score": 0.9044,
       "test_support": 540
     },
     "depression": {
       "class_id": 4,
       "display_name": "Depression",
-      "precision": 0.9825,
-      "recall": 0.8,
-      "f1_score": 0.8819,
+      "precision": 1.0,
+      "recall": 0.7667,
+      "f1_score": 0.8679,
       "test_support": 210
     }
   },
@@ -80,51 +80,51 @@
     ],
     "matrix": [
       [
-        326,
+        390,
         0,
-        119,
-        94,
-        1
+        100,
+        50,
+        0
       ],
       [
         0,
-        0,
+        55,
         0,
         0,
         0
       ],
       [
+        15,
         0,
-        0,
-        180,
+        165,
         0,
         0
       ],
       [
-        57,
-        2,
+        53,
         0,
-        479,
-        2
+        0,
+        487,
+        0
       ],
       [
-        42,
+        49,
         0,
         0,
         0,
-        168
+        161
       ]
     ]
   },
   "training": {
-    "epochs_trained": 12,
-    "best_val_acc": 0.7472,
-    "elapsed_seconds": 589.46,
+    "epochs_trained": 10,
+    "best_val_acc": 0.7662,
+    "elapsed_seconds": 734.96,
     "checkpoint_path": "C:\\Users\\shrav\\Documents\\Unified-EEG-MultiDisease-Classification\\checkpoints\\best_model.pt"
   },
   "scientific_provenance": {
     "healthy": "SRM Healthy (sub-010) + OpenNeuro ds004504 Controls + OpenNeuro ds004584 Controls + NEMAR nm000114 Controls",
-    "epilepsy": "CHB-MIT (chb01, 6 EDF sessions)",
+    "epilepsy": "CHB-MIT (7 independent subjects: chb01-chb05, chb07, chb08; Train: chb02/03/04/05/08, Val: chb07, Test: chb01)",
     "alzheimers": "OpenNeuro ds004504 (AD patients)",
     "parkinsons": "OpenNeuro ds004584 (PD patients)",
     "depression": "NEMAR nm000114 / MODMA (Major Depressive Disorder patients)",
@@ -132,7 +132,7 @@
     "montage": "Standard 19-channel 10-20 system (Fp1, Fp2, F7, F3, Fz, F4, F8, T3, C3, Cz, C4, T4, T5, P3, Pz, P4, T6, O1, O2), 256 Hz, 5-second windows"
   },
   "known_limitations": [
-    "CHB-MIT: 1 subject (chb01) present locally; assigned strictly to Train split. Cross-subject epilepsy generalization should be verified on additional CHB-MIT cases as they are downloaded.",
+    "CHB-MIT: 7 independent subjects (chb01-chb05, chb07, chb08). Train: 5 subjects (326 windows), Val: 1 subject (57 windows), Test: 1 subject (55 windows). Strict subject-level splitting with zero leakage.",
     "SRM Healthy: 1 subject (sub-010) assigned to Train split; healthy controls in Val/Test are sourced from OpenNeuro and NEMAR cohorts.",
     "FTD (Frontotemporal Dementia): Excluded from ds004504 to maintain clean Alzheimer's vs Healthy boundary."
   ]

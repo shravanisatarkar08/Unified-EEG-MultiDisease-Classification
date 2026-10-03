@@ -120,11 +120,12 @@ def build_five_class_index(
 
             f_name = str(row["file_path"])
             if d == "chbmit":
-                rel_path = (
-                    f"datasets/processed/chbmit/chb01/{f_name}"
-                    if not (processed_root / "chbmit" / f_name).exists()
-                    else f"datasets/processed/chbmit/{f_name}"
-                )
+                if (processed_root / "chbmit" / f_name).exists():
+                    rel_path = f"datasets/processed/chbmit/{f_name}"
+                elif (processed_root / "chbmit" / sid / f_name).exists():
+                    rel_path = f"datasets/processed/chbmit/{sid}/{f_name}"
+                else:
+                    rel_path = f"datasets/processed/chbmit/chb01/{f_name}"
             else:
                 rel_path = f"datasets/processed/{d}/{f_name}"
 
