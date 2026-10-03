@@ -351,6 +351,7 @@ class EEGDataset(Dataset):
             file_path = Path(src_file)  # absolute path (e.g. ~/mne_data/…)
 
         abs_path = str(file_path)
+        is_npy = abs_path.lower().endswith(".npy")
         is_dat = abs_path.lower().endswith(".dat")
         is_edf = abs_path.lower().endswith(".edf")
 
@@ -363,8 +364,23 @@ class EEGDataset(Dataset):
         is_bipolar_str = str(row.get("is_bipolar_montage", "False")).strip()
         is_bipolar = is_bipolar_str.lower() in ("true", "1", "yes")
 
+        # ---- Preprocessed .npy path: direct load ----------------------
+        if is_npy:
+            try:
+                loaded = np.load(abs_path).astype(np.float32)
+                if loaded.shape == (N_CHANNELS, N_SAMPLES):
+                    raw_window = loaded
+                else:
+                    raw_window = np.zeros((N_CHANNELS, N_SAMPLES), dtype=np.float32)
+                    n_ch = min(N_CHANNELS, loaded.shape[0])
+                    n_s = min(N_SAMPLES, loaded.shape[1])
+                    raw_window[:n_ch, :n_s] = loaded[:n_ch, :n_s]
+            except Exception as exc:
+                logger.warning(f"[EEGDataset] NPY load failed '{abs_path}': {exc}")
+                raw_window = np.zeros((N_CHANNELS, N_SAMPLES), dtype=np.float32)
+
         # ---- DEAP .dat path: load via DEAPPreprocessor ----------------
-        if is_dat:
+        elif is_dat:
             try:
                 global _deap_cache
                 if abs_path not in _deap_cache:
@@ -523,12 +539,11 @@ def get_dataloaders(
         f"[get_dataloaders] Loaded index: {len(df)} rows from {index_csv}"
     )
 
-    # Log depression rows if present (DEAP is now a valid source)
+    # Log depression rows if present
     depression_rows = df[df["class_category"] == "depression"]
     if len(depression_rows) > 0:
         logger.info(
-            f"[get_dataloaders] {len(depression_rows)} depression (DEAP proxy) rows found — "
-            "will load from DEAP .dat files."
+            f"[get_dataloaders] {len(depression_rows)} depression (NEMAR) rows found in index."
         )
 
     loaders: Dict[str, DataLoader] = {}

@@ -651,7 +651,7 @@ DISEASE_NAMES = [
 ]
 
 def get_trained_model(n_channels=19, n_samples=1280, num_classes=5):
-    ckpt_path = os.path.join(PROJECT_ROOT, "checkpoints", "best_model_ep003_acc1.0000.pt")
+    ckpt_path = os.path.join(PROJECT_ROOT, "checkpoints", "best_model.pt")
     if not os.path.exists(ckpt_path):
         ckpts = glob.glob(os.path.join(PROJECT_ROOT, "checkpoints", "*.pt"))
         ckpt_path = ckpts[0] if ckpts else None
@@ -659,11 +659,17 @@ def get_trained_model(n_channels=19, n_samples=1280, num_classes=5):
     if ckpt_path and os.path.exists(ckpt_path):
         try:
             ckpt = torch.load(ckpt_path, map_location="cpu", weights_only=False)
-            cfg = ckpt.get("config")
-            embed_dim = getattr(cfg, 'embed_dim', 128) if cfg else 128
-            num_heads = getattr(cfg, 'num_heads', 4) if cfg else 4
-            num_layers = getattr(cfg, 'num_layers', 3) if cfg else 3
-            ff_dim = getattr(cfg, 'ff_dim', 256) if cfg else 256
+            cfg = ckpt.get("config", {})
+            if isinstance(cfg, dict):
+                embed_dim = cfg.get("embed_dim", 64)
+                num_heads = cfg.get("num_heads", 4)
+                num_layers = cfg.get("num_layers", 2)
+                ff_dim = cfg.get("ff_dim", 128)
+            else:
+                embed_dim = getattr(cfg, 'embed_dim', 64)
+                num_heads = getattr(cfg, 'num_heads', 4)
+                num_layers = getattr(cfg, 'num_layers', 2)
+                ff_dim = getattr(cfg, 'ff_dim', 128)
 
             model = EEGClassifier(
                 n_channels=n_channels,

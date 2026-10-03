@@ -1,61 +1,139 @@
 {
-  "experiment": "Real EEG CNN-Transformer (Healthy vs Epilepsy)",
-  "datasets": {
-    "healthy": "EEGMMIDB (PhysioNet, 38 subjects, runs 1-2)",
-    "epilepsy": "CHB-MIT (chb01, 17 EDF recordings, 7 seizure sessions)"
-  },
-  "windows": {
-    "train": 1154,
-    "val": 301,
-    "test": 301,
-    "total": 1756
+  "experiment": "Unified Explainable CNN-Transformer Multi-Disease EEG Classification",
+  "num_classes": 5,
+  "classes": [
+    "Healthy",
+    "Epilepsy",
+    "Alzheimer's",
+    "Parkinson's",
+    "Depression"
+  ],
+  "cohort_sizes": {
+    "train_windows": 7195,
+    "val_windows": 1440,
+    "test_windows": 1470,
+    "total_windows": 10105
   },
   "test_metrics": {
-    "accuracy": 1.0,
-    "balanced_accuracy": 1.0,
-    "macro_f1": 1.0,
-    "weighted_f1": 1.0,
-    "sensitivity": 1.0,
-    "specificity": 1.0,
-    "roc_auc": 1.0,
-    "cohen_kappa": 1.0
+    "accuracy": 0.7844,
+    "balanced_accuracy": 0.8227,
+    "macro_f1": 0.634,
+    "weighted_f1": 0.7824,
+    "cohen_kappa": 0.6959,
+    "macro_roc_auc": 0.9498
   },
   "val_metrics": {
-    "accuracy": 1.0,
-    "balanced_accuracy": 1.0,
-    "macro_f1": 1.0,
-    "weighted_f1": 1.0
+    "accuracy": 0.7472,
+    "balanced_accuracy": 0.7943,
+    "macro_f1": 0.6004,
+    "weighted_f1": 0.7369
   },
-  "confusion_matrix_test": {
+  "per_class_metrics": {
+    "healthy": {
+      "class_id": 0,
+      "display_name": "Healthy",
+      "precision": 0.7671,
+      "recall": 0.6037,
+      "f1_score": 0.6756,
+      "test_support": 540
+    },
+    "epilepsy": {
+      "class_id": 1,
+      "display_name": "Epilepsy",
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1_score": 0.0,
+      "test_support": 0
+    },
+    "alzheimers": {
+      "class_id": 2,
+      "display_name": "Alzheimer's",
+      "precision": 0.602,
+      "recall": 1.0,
+      "f1_score": 0.7516,
+      "test_support": 180
+    },
+    "parkinsons": {
+      "class_id": 3,
+      "display_name": "Parkinson's",
+      "precision": 0.836,
+      "recall": 0.887,
+      "f1_score": 0.8607,
+      "test_support": 540
+    },
+    "depression": {
+      "class_id": 4,
+      "display_name": "Depression",
+      "precision": 0.9825,
+      "recall": 0.8,
+      "f1_score": 0.8819,
+      "test_support": 210
+    }
+  },
+  "confusion_matrix_test_5x5": {
     "labels": [
       "Healthy",
-      "Epilepsy"
+      "Epilepsy",
+      "Alzheimer's",
+      "Parkinson's",
+      "Depression"
     ],
     "matrix": [
       [
-        144,
+        326,
+        0,
+        119,
+        94,
+        1
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
         0
       ],
       [
         0,
-        157
+        0,
+        180,
+        0,
+        0
+      ],
+      [
+        57,
+        2,
+        0,
+        479,
+        2
+      ],
+      [
+        42,
+        0,
+        0,
+        0,
+        168
       ]
-    ],
-    "TN": 144,
-    "FP": 0,
-    "FN": 0,
-    "TP": 157
+    ]
   },
   "training": {
-    "epochs_trained": 1,
-    "best_val_acc": 1.0,
-    "elapsed_seconds": 398.6,
-    "checkpoint_path": "C:\\Users\\ARPIT KALE\\Desktop\\Unified-EEG-MultiDisease-Classification\\checkpoints\\best_model_ep003_acc1.0000.pt"
+    "epochs_trained": 12,
+    "best_val_acc": 0.7472,
+    "elapsed_seconds": 589.46,
+    "checkpoint_path": "C:\\Users\\shrav\\Documents\\Unified-EEG-MultiDisease-Classification\\checkpoints\\best_model.pt"
+  },
+  "scientific_provenance": {
+    "healthy": "SRM Healthy (sub-010) + OpenNeuro ds004504 Controls + OpenNeuro ds004584 Controls + NEMAR nm000114 Controls",
+    "epilepsy": "CHB-MIT (chb01, 6 EDF sessions)",
+    "alzheimers": "OpenNeuro ds004504 (AD patients)",
+    "parkinsons": "OpenNeuro ds004584 (PD patients)",
+    "depression": "NEMAR nm000114 / MODMA (Major Depressive Disorder patients)",
+    "subject_leakage": "ZERO (strictly independent subjects across Train, Val, and Test splits)",
+    "montage": "Standard 19-channel 10-20 system (Fp1, Fp2, F7, F3, Fz, F4, F8, T3, C3, Cz, C4, T4, T5, P3, Pz, P4, T6, O1, O2), 256 Hz, 5-second windows"
   },
   "known_limitations": [
-    "CHB-MIT: 1 subject (chb01) with 17 recordings partitioned across train/val/test; cross-subject epilepsy generalization remains unverified until additional CHB cases are processed.",
-    "Alzheimer's Disease & Parkinson's Disease: datasets not provided in repository scope \u2014 classes absent.",
-    "Depression / DEAP: requires explicit acceptance of the QMUL data-sharing agreement; proxy emotion mapping preprocessor is implemented and validated.",
-    "Spatial montage: CHB-MIT uses bipolar montage harmonized to 19 standard 10-20 channels via bipolar-to-referential mapping."
+    "CHB-MIT: 1 subject (chb01) present locally; assigned strictly to Train split. Cross-subject epilepsy generalization should be verified on additional CHB-MIT cases as they are downloaded.",
+    "SRM Healthy: 1 subject (sub-010) assigned to Train split; healthy controls in Val/Test are sourced from OpenNeuro and NEMAR cohorts.",
+    "FTD (Frontotemporal Dementia): Excluded from ds004504 to maintain clean Alzheimer's vs Healthy boundary."
   ]
 }

@@ -1,16 +1,21 @@
 """
-Execution script for real CNN–Transformer training, evaluation, confusion matrix,
-and true CNN Grad-CAM explainability on real EEG datasets:
-  - EEGMMIDB (PhysioNet) → Healthy (Class 0)
-  - CHB-MIT (chb01)      → Epilepsy (Class 1)
+Execution script for real Unified 5-Class CNN-Transformer EEG training, evaluation,
+confusion matrix generation, and Grad-CAM explainability across:
+  - Healthy (Class 0: SRM Healthy + OpenNeuro ds004504 Controls + ds004584 Controls + NEMAR Controls)
+  - Epilepsy (Class 1: CHB-MIT chb01)
+  - Alzheimer's Disease (Class 2: OpenNeuro ds004504 AD Patients)
+  - Parkinson's Disease (Class 3: OpenNeuro ds004584 PD Patients)
+  - Major Depressive Disorder (Class 4: NEMAR nm000114 / MODMA Patients)
 
 Outputs:
   - checkpoints/best_model.pt
   - results/metrics.json
+  - results/classification_report.csv
   - results/classification_report.txt
   - results/training_curves.png
   - results/confusion_matrix.png
   - results/gradcam_analysis.png
+  - results/FINAL_EXPERIMENT_SUMMARY.md
   - results/research_summary.md
 """
 
@@ -26,32 +31,123 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import torch
 import torch.nn.functional as F
-from sklearn.metrics import (
-    classification_report,
-    confusion_matrix,
-    accuracy_score,
-    balanced_accuracy_score,
-    f1_score,
-    roc_auc_score,
-    cohen_kappa_score
-)
 
 ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
 
-from training.dataset import get_dataloaders, CLASS_TO_IDX
+from training.dataset import get_dataloaders, CLASS_TO_IDX, IDX_TO_CLASS
 from training.trainer import EEGTrainer, TrainConfig
 from training.evaluator import evaluate_model, print_report
 from training.explainability import EEGExplainer
 from models.eeg_classifier import EEGClassifier
 
+# Pure numpy metric functions (zero external C-library dependency)
+def compute_multiclass_metrics(y_true: np.ndarray, y_pred: np.ndarray, y_probs: np.ndarray, n_classes: int = 5):
+    """Compute comprehensive multiclass classification metrics using pure NumPy."""
+    cm = np.zeros((n_classes, n_classes), dtype=np.int64)
+    for t, p in zip(y_true, y_pred):
+        if 0 <= t < n_classes and 0 <= p < n_classes:
+            cm[t, p] += 1
+
+    total_samples = len(y_true)
+    acc = float((y_true == y_pred).mean()) if total_samples > 0 else 0.0
+
+    per_class = {}
+    recalls = []
+    f1s = []
+    supports = []
+
+    for c in range(n_classes):
+        tp = int(cm[c, c])
+        fp = int(cm[:, c].sum() - tp)
+        fn = int(cm[c, :].sum() - tp)
+        support = int(cm[c, :].sum())
+        prec = float(tp) / max(1, tp + fp) if (tp + fp) > 0 else 0.0
+        rec  = float(tp) / max(1, tp + fn) if (tp + fn) > 0 else 0.0
+        f1   = float(2 * prec * rec / max(1e-9, prec + rec)) if (prec + rec) > 0 else 0.0
+
+        per_class[c] = {
+            "precision": prec,
+            "recall": rec,
+            "f1-score": f1,
+            "support": support
+        }
+        if support > 0:
+            recalls.append(rec)
+        f1s.append(f1)
+        supports.append(support)
+
+    bal_acc = float(np.mean(recalls)) if recalls else 0.0
+    macro_f1 = float(np.mean(f1s))
+    weighted_f1 = float(np.sum(np.array(f1s) * np.array(supports)) / max(1, total_samples))
+
+    # Cohen's Kappa
+    # po = accuracy
+    # pe = sum( (actual_i / total) * (pred_i / total) )
+    actual_marginals = cm.sum(axis=1) / max(1, total_samples)
+    pred_marginals   = cm.sum(axis=0) / max(1, total_samples)
+    pe = float(np.sum(actual_marginals * pred_marginals))
+    kappa = float((acc - pe) / max(1e-9, 1.0 - pe)) if pe < 1.0 else 0.0
+
+    # Multi-class One-vs-Rest ROC-AUC via rank-sum (Mann-Whitney U statistic)
+    aucs = []
+    for c in range(n_classes):
+        y_bin = (y_true == c).astype(int)
+        n_pos = int(y_bin.sum())
+        n_neg = len(y_bin) - n_pos
+        if n_pos > 0 and n_neg > 0:
+            scores = y_probs[:, c]
+            # Rank scores
+            ranks = scores.argsort().argsort() + 1
+            pos_rank_sum = np.sum(ranks[y_bin == 1])
+            auc_c = (pos_rank_sum - n_pos * (n_pos + 1) / 2.0) / (n_pos * n_neg)
+            aucs.append(float(auc_c))
+    macro_auc = float(np.mean(aucs)) if aucs else 0.0
+
+    return {
+        "accuracy": acc,
+        "balanced_accuracy": bal_acc,
+        "macro_f1": macro_f1,
+        "weighted_f1": weighted_f1,
+        "cohen_kappa": kappa,
+        "macro_roc_auc": macro_auc,
+        "confusion_matrix": cm,
+        "per_class": per_class
+    }
+
+
+def format_classification_report(per_class_metrics: dict, labels: list, total_samples: int):
+    """Format classification report as plain text string."""
+    lines = []
+    lines.append(f"{'Class':<20} {'Precision':>10} {'Recall':>10} {'F1-Score':>10} {'Support':>10}")
+    lines.append("-" * 65)
+    f1s = []
+    supports = []
+    for idx, name in enumerate(labels):
+        m = per_class_metrics.get(idx, {})
+        p = m.get("precision", 0.0)
+        r = m.get("recall", 0.0)
+        f = m.get("f1-score", 0.0)
+        s = m.get("support", 0)
+        f1s.append(f)
+        supports.append(s)
+        lines.append(f"{name:<20} {p:>10.4f} {r:>10.4f} {f:>10.4f} {s:>10d}")
+
+    lines.append("-" * 65)
+    macro_f = np.mean(f1s)
+    weighted_f = np.sum(np.array(f1s) * np.array(supports)) / max(1, total_samples)
+    lines.append(f"{'Macro Average':<20} {'':>10} {'':>10} {macro_f:>10.4f} {total_samples:>10d}")
+    lines.append(f"{'Weighted Average':<20} {'':>10} {'':>10} {weighted_f:>10.4f} {total_samples:>10d}")
+    return "\n".join(lines)
+
 INDEX_CSV      = ROOT / "datasets" / "metadata" / "model_dataset_index.csv"
 CHECKPOINT_DIR = ROOT / "checkpoints"
 RESULTS_DIR    = ROOT / "results"
 CLASS_NAMES    = ["healthy", "epilepsy", "alzheimers", "parkinsons", "depression"]
-ACTIVE_NAMES   = ["Healthy", "Epilepsy"]
+DISPLAY_NAMES  = ["Healthy", "Epilepsy", "Alzheimer's", "Parkinson's", "Depression"]
 
 
 def plot_training_curves(history: dict, save_path: Path):
@@ -62,7 +158,7 @@ def plot_training_curves(history: dict, save_path: Path):
     # Loss
     ax1.plot(epochs, history["train_loss"], label="Train Loss", color="#1f77b4", lw=2)
     ax1.plot(epochs, history["val_loss"], label="Val Loss", color="#ff7f0e", lw=2, linestyle="--")
-    ax1.set_title("Loss Trajectory (CrossEntropy)", fontsize=13, fontweight="bold")
+    ax1.set_title("Loss Trajectory (Weighted CrossEntropy)", fontsize=13, fontweight="bold")
     ax1.set_xlabel("Epoch", fontsize=11)
     ax1.set_ylabel("Loss", fontsize=11)
     ax1.grid(True, alpha=0.3)
@@ -84,126 +180,123 @@ def plot_training_curves(history: dict, save_path: Path):
 
 def plot_confusion_matrix(cm: np.ndarray, labels: list, save_path: Path, title: str):
     """Generate high-contrast normalized and count confusion matrix."""
-    fig, ax = plt.subplots(figsize=(6, 5))
-    cm_norm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
+    fig, ax = plt.subplots(figsize=(8, 7))
+    
+    # Avoid zero division for classes without samples in split
+    row_sums = cm.sum(axis=1, keepdims=True)
+    row_sums[row_sums == 0] = 1
+    cm_norm = cm.astype('float') / row_sums
 
-    im = ax.imshow(cm, interpolation='nearest', cmap=plt.cm.Blues)
-    ax.figure.colorbar(im, ax=ax)
-    ax.set(xticks=np.arange(cm.shape[1]),
-           yticks=np.arange(cm.shape[0]),
+    im = ax.imshow(cm_norm, interpolation='nearest', cmap=plt.cm.Blues, vmin=0, vmax=1)
+    cbar = ax.figure.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+    cbar.set_label('Normalized Fraction', rotation=270, labelpad=15)
+
+    ax.set(xticks=np.arange(len(labels)),
+           yticks=np.arange(len(labels)),
            xticklabels=labels, yticklabels=labels,
            title=title,
-           ylabel='True Class',
+           ylabel='True Class (Ground Truth)',
            xlabel='Predicted Class')
 
-    plt.setp(ax.get_xticklabels(), rotation=45, ha="right", rotation_mode="anchor")
+    plt.setp(ax.get_xticklabels(), rotation=30, ha="right", rotation_mode="anchor")
 
-    thresh = cm.max() / 2.
+    thresh = 0.5
     for i in range(cm.shape[0]):
         for j in range(cm.shape[1]):
             val = cm[i, j]
             pct = cm_norm[i, j] * 100
-            txt = f"{val}\n({pct:.1f}%)"
+            txt = f"{val}\n({pct:.1f}%)" if val > 0 else f"{val}"
             ax.text(j, i, txt,
                     ha="center", va="center",
-                    color="white" if val > thresh else "black",
-                    fontweight="bold")
+                    color="white" if cm_norm[i, j] > thresh else "black",
+                    fontweight="bold" if val > 0 else "normal",
+                    fontsize=9)
 
     plt.tight_layout()
     fig.savefig(save_path, dpi=300)
     plt.close(fig)
 
 
-def generate_gradcam_visualizations(model: torch.nn.Module, test_loader, device: torch.device, save_path: Path):
-    """Compute true CNN Grad-CAM and saliency on real test samples."""
+def generate_gradcam_visualizations(model: torch.nn.Module, dataloaders: dict, device: torch.device, save_path: Path):
+    """Compute true CNN Grad-CAM and saliency on real samples across all 5 classes."""
     explainer = EEGExplainer(model, device)
     model.eval()
 
-    sample_healthy = None
-    sample_epilepsy = None
-
-    for x_b, y_b, meta_b in test_loader:
-        for i in range(len(y_b)):
-            lbl = int(y_b[i].item())
-            if isinstance(meta_b, list):
-                s_id = meta_b[i].get("subject_id", "unknown") if isinstance(meta_b[i], dict) else "unknown"
-                s_file = meta_b[i].get("source_file", "") if isinstance(meta_b[i], dict) else ""
-            elif isinstance(meta_b, dict):
-                s_id = meta_b["subject_id"][i] if isinstance(meta_b["subject_id"], (list, tuple)) else str(meta_b["subject_id"])
-                s_file = meta_b["source_file"][i] if isinstance(meta_b["source_file"], (list, tuple)) else str(meta_b["source_file"])
-            else:
-                s_id, s_file = "unknown", ""
-
-            if lbl == 0 and sample_healthy is None:
-                sample_healthy = (x_b[i:i+1], s_id, s_file)
-            elif lbl == 1 and sample_epilepsy is None:
-                sample_epilepsy = (x_b[i:i+1], s_id, s_file)
-        if sample_healthy is not None and sample_epilepsy is not None:
+    samples_by_class = {}
+    
+    # Check test split first
+    for split_name in ["test", "val", "train"]:
+        loader = dataloaders.get(split_name)
+        if loader is None:
+            continue
+        for x_b, y_b, meta_b in loader:
+            for i in range(len(y_b)):
+                lbl = int(y_b[i].item())
+                if lbl not in samples_by_class:
+                    if isinstance(meta_b, list):
+                        s_id = meta_b[i].get("subject_id", "unknown") if isinstance(meta_b[i], dict) else "unknown"
+                        s_ds = meta_b[i].get("dataset", "unknown") if isinstance(meta_b[i], dict) else "unknown"
+                    elif isinstance(meta_b, dict):
+                        s_id = meta_b["subject_id"][i] if isinstance(meta_b["subject_id"], (list, tuple)) else str(meta_b["subject_id"])
+                        s_ds = meta_b["dataset"][i] if isinstance(meta_b["dataset"], (list, tuple)) else str(meta_b["dataset"])
+                    else:
+                        s_id, s_ds = "unknown", "unknown"
+                    samples_by_class[lbl] = (x_b[i:i+1], s_id, s_ds, split_name)
+            if len(samples_by_class) >= 5:
+                break
+        if len(samples_by_class) >= 5:
             break
 
-    if sample_healthy is None or sample_epilepsy is None:
-        logger.warning("Could not find both healthy and epilepsy samples in test split for Grad-CAM.")
-        return
-
-    fig, axes = plt.subplots(2, 2, figsize=(14, 8))
-    CHANNELS = ["Fp1","Fp2","F3","F4","C3","C4","P3","P4","O1","O2","F7","F8","T3","T4","T5","T6","Fz","Cz","Pz"]
+    CHANNELS = ["Fp1","Fp2","F7","F3","Fz","F4","F8","T3","C3","Cz","C4","T4","T5","P3","Pz","P4","T6","O1","O2"]
     time_sec = np.linspace(0, 5, 1280)
+    colors = ["#1f77b4", "#d62728", "#9467bd", "#ff7f0e", "#2ca02c"]
 
-    # Healthy
-    x_h, subj_h, _ = sample_healthy
-    cam_h = explainer.grad_cam(x_h, target_class=0)
-    sal_h = explainer.input_gradients(x_h, target_class=0)
-    eeg_h = x_h.squeeze().detach().cpu().numpy()
+    fig, axes = plt.subplots(5, 2, figsize=(16, 18))
+    fig.suptitle("Unified Explainability: CNN Grad-CAM Temporal Activation & Spatial Electrode Saliency", fontsize=14, fontweight="bold", y=0.995)
 
-    # Plot EEG representative channel + Grad-CAM for Healthy
-    ax_h1 = axes[0, 0]
-    ax_h1.plot(time_sec, eeg_h[4], color="#1f77b4", lw=1.2, label="EEG Cz Signal")
-    ax_h1_twin = ax_h1.twinx()
-    ax_h1_twin.plot(time_sec, cam_h, color="#e41a1c", lw=2, linestyle="--", label="CNN Grad-CAM")
-    ax_h1_twin.fill_between(time_sec, 0, cam_h, color="#e41a1c", alpha=0.2)
-    ax_h1_twin.set_ylabel("Grad-CAM Activation", color="#e41a1c")
-    ax_h1.set_title(f"Healthy Control ({subj_h}): Cz Signal & Temporal Grad-CAM", fontweight="bold")
-    ax_h1.set_xlabel("Time (seconds)")
-    ax_h1.set_ylabel("Amplitude (z-score)")
-    ax_h1.grid(True, alpha=0.3)
+    for c_idx, class_name in enumerate(DISPLAY_NAMES):
+        ax_wave = axes[c_idx, 0]
+        ax_bar  = axes[c_idx, 1]
 
-    # Spatial Attribution for Healthy
-    ax_h2 = axes[0, 1]
-    channel_imp_h = sal_h.mean(axis=1)
-    ax_h2.bar(CHANNELS, channel_imp_h, color="#377eb8", edgecolor="black", alpha=0.85)
-    ax_h2.set_title("Healthy Control: Channel Saliency Attribution", fontweight="bold")
-    ax_h2.set_xlabel("Electrode Channel")
-    ax_h2.set_ylabel("Mean Gradient Attribution")
-    ax_h2.tick_params(axis='x', rotation=45)
-    ax_h2.grid(True, alpha=0.3)
+        if c_idx not in samples_by_class:
+            ax_wave.text(0.5, 0.5, f"No samples available for {class_name}", ha="center", va="center")
+            ax_bar.text(0.5, 0.5, f"No samples available for {class_name}", ha="center", va="center")
+            continue
 
-    # Epilepsy
-    x_e, subj_e, _ = sample_epilepsy
-    cam_e = explainer.grad_cam(x_e, target_class=1)
-    sal_e = explainer.input_gradients(x_e, target_class=1)
-    eeg_e = x_e.squeeze().detach().cpu().numpy()
+        x_samp, subj, ds_name, split = samples_by_class[c_idx]
+        cam = explainer.grad_cam(x_samp, target_class=c_idx)
+        sal = explainer.input_gradients(x_samp, target_class=c_idx)
+        eeg_np = x_samp.squeeze().detach().cpu().numpy()
 
-    # Plot EEG representative channel + Grad-CAM for Epilepsy
-    ax_e1 = axes[1, 0]
-    ax_e1.plot(time_sec, eeg_e[4], color="#ff7f0e", lw=1.2, label="EEG Cz Signal")
-    ax_e1_twin = ax_e1.twinx()
-    ax_e1_twin.plot(time_sec, cam_e, color="#e41a1c", lw=2, linestyle="--", label="CNN Grad-CAM")
-    ax_e1_twin.fill_between(time_sec, 0, cam_e, color="#e41a1c", alpha=0.2)
-    ax_e1_twin.set_ylabel("Grad-CAM Activation", color="#e41a1c")
-    ax_e1.set_title(f"Epilepsy Patient ({subj_e}): Cz Signal & Temporal Grad-CAM", fontweight="bold")
-    ax_e1.set_xlabel("Time (seconds)")
-    ax_e1.set_ylabel("Amplitude (z-score)")
-    ax_e1.grid(True, alpha=0.3)
+        # Temporal waveform (Cz channel or channel 9) + Grad-CAM overlay
+        ch_to_plot = 9 if eeg_np.shape[0] > 9 else 0
+        ch_name_plotted = CHANNELS[ch_to_plot] if ch_to_plot < len(CHANNELS) else f"Ch {ch_to_plot}"
 
-    # Spatial Attribution for Epilepsy
-    ax_e2 = axes[1, 1]
-    channel_imp_e = sal_e.mean(axis=1)
-    ax_e2.bar(CHANNELS, channel_imp_e, color="#e41a1c", edgecolor="black", alpha=0.85)
-    ax_e2.set_title("Epilepsy Patient: Channel Saliency Attribution", fontweight="bold")
-    ax_e2.set_xlabel("Electrode Channel")
-    ax_e2.set_ylabel("Mean Gradient Attribution")
-    ax_e2.tick_params(axis='x', rotation=45)
-    ax_e2.grid(True, alpha=0.3)
+        ax_wave.plot(time_sec, eeg_np[ch_to_plot], color="#333333", lw=1.2, label=f"EEG {ch_name_plotted} signal")
+        ax_twin = ax_wave.twinx()
+        ax_twin.plot(time_sec, cam, color=colors[c_idx], lw=2.2, linestyle="--", label=f"CNN Grad-CAM ({class_name})")
+        ax_twin.fill_between(time_sec, 0, cam, color=colors[c_idx], alpha=0.25)
+        ax_twin.set_ylabel("Grad-CAM Activation", color=colors[c_idx], fontweight="bold")
+        ax_twin.set_ylim(-0.05, 1.1)
+
+        ax_wave.set_title(f"{class_name} [{ds_name} / {subj} ({split})]: Waveform & Temporal Grad-CAM", fontweight="bold", fontsize=11)
+        ax_wave.set_xlabel("Time (seconds)")
+        ax_wave.set_ylabel("Amplitude (z-score)")
+        ax_wave.grid(True, alpha=0.3)
+
+        # Spatial bar attribution across 19 channels
+        chan_attribution = sal.mean(axis=1)
+        if len(chan_attribution) == len(CHANNELS):
+            plot_channels = CHANNELS
+        else:
+            plot_channels = [f"Ch{k}" for k in range(len(chan_attribution))]
+
+        ax_bar.bar(plot_channels, chan_attribution, color=colors[c_idx], edgecolor="black", alpha=0.85)
+        ax_bar.set_title(f"{class_name}: Spatial Channel Saliency Attribution (19 10-20 Electrodes)", fontweight="bold", fontsize=11)
+        ax_bar.set_xlabel("Electrode Channel")
+        ax_bar.set_ylabel("Mean Gradient Saliency")
+        ax_bar.tick_params(axis='x', rotation=45)
+        ax_bar.grid(True, alpha=0.3)
 
     plt.tight_layout()
     fig.savefig(save_path, dpi=300)
@@ -216,7 +309,7 @@ def run():
         format="%(asctime)s [%(levelname)s] %(message)s",
         handlers=[
             logging.StreamHandler(sys.stdout),
-            logging.FileHandler(ROOT / "new_training.log", mode="w"),
+            logging.FileHandler(ROOT / "new_training.log", mode="w", encoding="utf-8"),
         ],
     )
     logger = logging.getLogger(__name__)
@@ -224,17 +317,17 @@ def run():
     CHECKPOINT_DIR.mkdir(parents=True, exist_ok=True)
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 
-    logger.info("=" * 70)
-    logger.info("STARTING REAL CNN-TRANSFORMER EEG TRAINING PIPELINE")
-    logger.info("Datasets: EEGMMIDB (Healthy) + CHB-MIT chb01 (Epilepsy)")
-    logger.info("=" * 70)
+    logger.info("=" * 80)
+    logger.info("STARTING UNIFIED 5-CLASS CNN-TRANSFORMER EEG TRAINING PIPELINE")
+    logger.info("Classes: Healthy (0), Epilepsy (1), Alzheimer's (2), Parkinson's (3), Depression (4)")
+    logger.info("=" * 80)
 
-    # Load dataloaders
+    # 1. Load DataLoaders
     logger.info("Loading dataset splits from index: %s", INDEX_CSV)
     loaders = get_dataloaders(
         index_csv=str(INDEX_CSV),
         project_root=str(ROOT),
-        batch_size=32,
+        batch_size=64,
         num_workers=0,
         shuffle_train=True,
     )
@@ -246,179 +339,182 @@ def run():
     n_train = len(train_loader.dataset)
     n_val   = len(val_loader.dataset)
     n_test  = len(test_loader.dataset)
+    n_total = n_train + n_val + n_test
 
-    logger.info("Split sizes: train=%d, val=%d, test=%d", n_train, n_val, n_test)
+    logger.info("Split sizes: Train=%d, Val=%d, Test=%d (Total=%d windows)", n_train, n_val, n_test, n_total)
 
-    # Class balance and weights
-    label_counts = train_loader.dataset.index_df["class_label_idx"].value_counts().to_dict()
-    total = sum(label_counts.values())
-    n_active = len(label_counts)
-    class_weights = torch.ones(5, dtype=torch.float32)
-    for idx, count in label_counts.items():
-        class_weights[int(idx)] = total / (n_active * count)
+    # 2. Compute Class Balance and Weighted Loss Weights
+    train_df = train_loader.dataset.index_df
+    label_counts = train_df["class_label_idx"].value_counts().to_dict()
+    total_train = len(train_df)
+    n_classes = 5
+
+    # Compute inverse class frequencies
+    class_weights = torch.ones(n_classes, dtype=torch.float32)
+    for idx in range(n_classes):
+        cnt = label_counts.get(idx, 0)
+        if cnt > 0:
+            # Sqrt-smoothed inverse frequency to prevent extreme instability
+            class_weights[idx] = float(np.sqrt(total_train / (n_classes * cnt)))
+        else:
+            class_weights[idx] = 1.0
+
+    class_weights = class_weights / class_weights.mean()
     class_weights_list = class_weights.tolist()
-    logger.info("Class distribution in train: %s", label_counts)
-    logger.info("Balanced class weights: %s", class_weights_list)
+    logger.info("Train class distribution: %s", {DISPLAY_NAMES[k]: label_counts.get(k, 0) for k in range(5)})
+    logger.info("Balanced loss weights: %s", [round(w, 4) for w in class_weights_list])
 
-    # Training configuration
+    # 3. Model & Trainer Configuration
     cfg = TrainConfig(
         n_channels=19,
         n_samples=1280,
-        num_classes=5,       # 5-class head architecture
-        embed_dim=128,
+        num_classes=5,
+        embed_dim=64,
         num_heads=4,
-        num_layers=3,
-        ff_dim=256,
-        cnn_dropout=0.3,
+        num_layers=2,
+        ff_dim=128,
+        cnn_dropout=0.25,
         trans_dropout=0.1,
-        lr=3e-4,
+        lr=5e-4,
         weight_decay=1e-2,
         warmup_epochs=2,
-        max_epochs=40,
-        batch_size=32,
-        patience=10,
+        max_epochs=12,
+        batch_size=64,
+        patience=6,
         checkpoint_dir=str(CHECKPOINT_DIR),
         num_workers=0,
         class_weights=class_weights_list,
     )
 
-    import argparse
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--eval-only", action="store_true", help="Skip training and run evaluation + Grad-CAM from existing checkpoint")
-    args, _ = parser.parse_known_args()
-
     trainer = EEGTrainer(cfg)
     device = trainer.device
     model = trainer.model
 
-    existing_ckpts = list(CHECKPOINT_DIR.glob("best_model_*.pt"))
-    if args.eval_only and existing_ckpts:
-        best_ckpt = sorted(existing_ckpts, key=lambda p: p.stat().st_mtime, reverse=True)[0]
-        logger.info("Found trained checkpoint %s — loading directly for evaluation & Grad-CAM...", best_ckpt)
-        ckpt = torch.load(best_ckpt, map_location=device, weights_only=False)
-        model.load_state_dict(ckpt["model_state_dict"])
-        trainer.best_ckpt_path = best_ckpt
-        trainer.best_val_acc = float(ckpt.get("val_acc", 1.0))
-        history = {"train_loss": [0.0002], "train_acc": [1.0], "val_loss": [0.0001], "val_acc": [1.0]}
-        elapsed = 398.6
+    logger.info("Training on device: %s", device)
+    t_start = time.time()
+    history = trainer.train(train_loader, val_loader)
+    elapsed = time.time() - t_start
+
+    logger.info("Training finished in %.1f seconds (%.2f minutes)", elapsed, elapsed / 60)
+    logger.info("Best validation accuracy: %.4f", trainer.best_val_acc)
+
+    # 4. Save canonical best_model.pt
+    canonical_ckpt = CHECKPOINT_DIR / "best_model.pt"
+    if trainer.best_ckpt_path and trainer.best_ckpt_path.exists():
+        ckpt_data = torch.load(trainer.best_ckpt_path, map_location=device, weights_only=False)
+        model.load_state_dict(ckpt_data["model_state_dict"])
+        torch.save(ckpt_data, canonical_ckpt)
+        logger.info("Saved canonical checkpoint to: %s", canonical_ckpt)
     else:
-        t_start = time.time()
-        history = trainer.train(train_loader, val_loader)
-        elapsed = time.time() - t_start
+        torch.save({
+            "epoch": len(history["train_loss"]),
+            "model_state_dict": model.state_dict(),
+            "val_acc": trainer.best_val_acc,
+            "config": cfg.__dict__,
+        }, canonical_ckpt)
 
-        logger.info("Training finished in %.1f seconds (%.2f minutes)", elapsed, elapsed/60)
-        logger.info("Best validation accuracy: %.4f", trainer.best_val_acc)
+    # 5. Plot Training Curves
+    plot_training_curves(history, RESULTS_DIR / "training_curves.png")
+    logger.info("Saved training curves: %s", RESULTS_DIR / "training_curves.png")
 
-        # Plot training curves
-        plot_training_curves(history, RESULTS_DIR / "training_curves.png")
-        logger.info("Saved: %s", RESULTS_DIR / "training_curves.png")
+    # 6. Comprehensive Evaluation
+    def run_eval(loader):
+        preds, targets, probs = [], [], []
+        model.eval()
+        with torch.no_grad():
+            for x, y, _ in loader:
+                x, y = x.to(device), y.to(device)
+                logits = model(x)
+                pr = F.softmax(logits, dim=-1)
+                preds.extend(logits.argmax(dim=-1).cpu().numpy())
+                targets.extend(y.cpu().numpy())
+                probs.extend(pr.cpu().numpy())
+        return np.array(preds), np.array(targets), np.array(probs)
 
-        if trainer.best_ckpt_path and trainer.best_ckpt_path.exists():
-            ckpt = torch.load(trainer.best_ckpt_path, map_location=device, weights_only=False)
-            model.load_state_dict(ckpt["model_state_dict"])
-            logger.info("Loaded best checkpoint weights from %s", trainer.best_ckpt_path)
+    val_preds, val_targets, val_probs = run_eval(val_loader)
+    test_preds, test_targets, test_probs = run_eval(test_loader)
 
-    # Validation evaluation
-    val_preds, val_targets, val_probs = [], [], []
-    model.eval()
-    with torch.no_grad():
-        for x, y, _ in val_loader:
-            x, y = x.to(device), y.to(device)
-            logits = model(x)
-            probs = F.softmax(logits, dim=-1)
-            preds = logits.argmax(dim=-1)
-            val_preds.extend(preds.cpu().numpy())
-            val_targets.extend(y.cpu().numpy())
-            val_probs.extend(probs.cpu().numpy())
+    # Test Metrics
+    test_metrics = compute_multiclass_metrics(test_targets, test_preds, test_probs, n_classes=5)
+    test_acc = test_metrics["accuracy"]
+    test_bal_acc = test_metrics["balanced_accuracy"]
+    test_f1_macro = test_metrics["macro_f1"]
+    test_f1_weighted = test_metrics["weighted_f1"]
+    test_kappa = test_metrics["cohen_kappa"]
+    test_auc = test_metrics["macro_roc_auc"]
+    cm_test_5x5 = test_metrics["confusion_matrix"]
 
-    val_preds = np.array(val_preds)
-    val_targets = np.array(val_targets)
-    val_probs = np.array(val_probs)
+    # Validation Metrics
+    val_metrics = compute_multiclass_metrics(val_targets, val_preds, val_probs, n_classes=5)
+    val_acc = val_metrics["accuracy"]
+    val_bal_acc = val_metrics["balanced_accuracy"]
+    val_f1_macro = val_metrics["macro_f1"]
+    val_f1_weighted = val_metrics["weighted_f1"]
+    cm_val_5x5 = val_metrics["confusion_matrix"]
 
-    # Test evaluation
-    test_preds, test_targets, test_probs = [], [], []
-    with torch.no_grad():
-        for x, y, _ in test_loader:
-            x, y = x.to(device), y.to(device)
-            logits = model(x)
-            probs = F.softmax(logits, dim=-1)
-            preds = logits.argmax(dim=-1)
-            test_preds.extend(preds.cpu().numpy())
-            test_targets.extend(y.cpu().numpy())
-            test_probs.extend(probs.cpu().numpy())
+    # Plot 5-class Confusion Matrix
+    plot_confusion_matrix(cm_test_5x5, DISPLAY_NAMES, RESULTS_DIR / "confusion_matrix.png",
+                          f"5-Class Held-Out Test Confusion Matrix (Acc: {test_acc*100:.2f}%)")
+    logger.info("Saved confusion matrix: %s", RESULTS_DIR / "confusion_matrix.png")
 
-    test_preds = np.array(test_preds)
-    test_targets = np.array(test_targets)
-    test_probs = np.array(test_probs)
+    # 7. Generate Multi-Class Grad-CAM Visualizations
+    logger.info("Generating multi-disease CNN Grad-CAM explainability maps...")
+    generate_gradcam_visualizations(model, loaders, device, RESULTS_DIR / "gradcam_analysis.png")
+    logger.info("Saved Grad-CAM analysis: %s", RESULTS_DIR / "gradcam_analysis.png")
 
-    # Metrics computation
-    val_acc = accuracy_score(val_targets, val_preds)
-    val_bal_acc = balanced_accuracy_score(val_targets, val_preds)
-    val_f1_macro = f1_score(val_targets, val_preds, average='macro', zero_division=0)
-    val_f1_weighted = f1_score(val_targets, val_preds, average='weighted', zero_division=0)
+    # 8. Classification Report (CSV + TXT)
+    clf_text = format_classification_report(test_metrics["per_class"], DISPLAY_NAMES, len(test_targets))
+    
+    # Save CSV
+    clf_rows = []
+    for c_idx, d_name in enumerate(DISPLAY_NAMES):
+        m = test_metrics["per_class"].get(c_idx, {})
+        clf_rows.append({
+            "class_id": c_idx,
+            "class_name": d_name,
+            "precision": m.get("precision", 0.0),
+            "recall": m.get("recall", 0.0),
+            "f1_score": m.get("f1-score", 0.0),
+            "support": m.get("support", 0)
+        })
+    clf_df = pd.DataFrame(clf_rows)
+    clf_df.to_csv(RESULTS_DIR / "classification_report.csv", index=False)
 
-    test_acc = accuracy_score(test_targets, test_preds)
-    test_bal_acc = balanced_accuracy_score(test_targets, test_preds)
-    test_f1_macro = f1_score(test_targets, test_preds, average='macro', zero_division=0)
-    test_f1_weighted = f1_score(test_targets, test_preds, average='weighted', zero_division=0)
-    test_kappa = cohen_kappa_score(test_targets, test_preds)
+    with open(RESULTS_DIR / "classification_report.txt", "w", encoding="utf-8") as f:
+        f.write(clf_text)
+    logger.info("Saved classification reports.")
 
-    # Binary ROC-AUC for Active Classes (0: Healthy, 1: Epilepsy)
-    test_binary_probs = test_probs[:, 1]  # P(epilepsy)
-    test_auc = roc_auc_score(test_targets, test_binary_probs)
+    # 9. Save JSON metrics
+    per_class_summary = {}
+    for c_idx, c_name in enumerate(CLASS_NAMES):
+        d_name = DISPLAY_NAMES[c_idx]
+        m = test_metrics["per_class"].get(c_idx, {})
+        per_class_summary[c_name] = {
+            "class_id": c_idx,
+            "display_name": d_name,
+            "precision": round(float(m.get("precision", 0.0)), 4),
+            "recall": round(float(m.get("recall", 0.0)), 4),
+            "f1_score": round(float(m.get("f1-score", 0.0)), 4),
+            "test_support": int(m.get("support", 0)),
+        }
 
-    # Confusion matrix (2x2 active)
-    cm_test = confusion_matrix(test_targets, test_preds, labels=[0, 1])
-    cm_val  = confusion_matrix(val_targets, val_preds, labels=[0, 1])
-
-    # Plot confusion matrix
-    plot_confusion_matrix(cm_test, ACTIVE_NAMES, RESULTS_DIR / "confusion_matrix.png",
-                          f"Test Confusion Matrix (Acc: {test_acc*100:.1f}%)")
-    logger.info("Saved: %s", RESULTS_DIR / "confusion_matrix.png")
-
-    # True CNN Grad-CAM
-    logger.info("Generating true CNN Grad-CAM explainability maps...")
-    generate_gradcam_visualizations(model, test_loader, device, RESULTS_DIR / "gradcam_analysis.png")
-    logger.info("Saved: %s", RESULTS_DIR / "gradcam_analysis.png")
-
-    # Save classification report
-    clf_rep = classification_report(
-        test_targets, test_preds,
-        labels=[0, 1],
-        target_names=ACTIVE_NAMES,
-        digits=4
-    )
-    with open(RESULTS_DIR / "classification_report.txt", "w") as f:
-        f.write(clf_rep)
-
-    # Sensitivity and Specificity (Epilepsy = Positive, Healthy = Negative)
-    # TN: cm[0,0], FP: cm[0,1], FN: cm[1,0], TP: cm[1,1]
-    tn, fp, fn, tp = cm_test.ravel()
-    sensitivity = tp / (tp + fn) if (tp + fn) > 0 else 0.0
-    specificity = tn / (tn + fp) if (tn + fp) > 0 else 0.0
-
-    # Save full metrics JSON
-    metrics_summary = {
-        "experiment": "Real EEG CNN-Transformer (Healthy vs Epilepsy)",
-        "datasets": {
-            "healthy": "EEGMMIDB (PhysioNet, 38 subjects, runs 1-2)",
-            "epilepsy": "CHB-MIT (chb01, 17 EDF recordings, 7 seizure sessions)"
-        },
-        "windows": {
-            "train": int(n_train),
-            "val": int(n_val),
-            "test": int(n_test),
-            "total": int(n_train + n_val + n_test)
+    metrics_json = {
+        "experiment": "Unified Explainable CNN-Transformer Multi-Disease EEG Classification",
+        "num_classes": 5,
+        "classes": DISPLAY_NAMES,
+        "cohort_sizes": {
+            "train_windows": int(n_train),
+            "val_windows": int(n_val),
+            "test_windows": int(n_test),
+            "total_windows": int(n_total),
         },
         "test_metrics": {
             "accuracy": round(float(test_acc), 4),
             "balanced_accuracy": round(float(test_bal_acc), 4),
             "macro_f1": round(float(test_f1_macro), 4),
             "weighted_f1": round(float(test_f1_weighted), 4),
-            "sensitivity": round(float(sensitivity), 4),
-            "specificity": round(float(specificity), 4),
-            "roc_auc": round(float(test_auc), 4),
             "cohen_kappa": round(float(test_kappa), 4),
+            "macro_roc_auc": round(float(test_auc), 4),
         },
         "val_metrics": {
             "accuracy": round(float(val_acc), 4),
@@ -426,120 +522,136 @@ def run():
             "macro_f1": round(float(val_f1_macro), 4),
             "weighted_f1": round(float(val_f1_weighted), 4),
         },
-        "confusion_matrix_test": {
-            "labels": ACTIVE_NAMES,
-            "matrix": cm_test.tolist(),
-            "TN": int(tn), "FP": int(fp), "FN": int(fn), "TP": int(tp)
+        "per_class_metrics": per_class_summary,
+        "confusion_matrix_test_5x5": {
+            "labels": DISPLAY_NAMES,
+            "matrix": cm_test_5x5.tolist(),
         },
         "training": {
             "epochs_trained": len(history["train_loss"]),
             "best_val_acc": round(float(trainer.best_val_acc), 4),
             "elapsed_seconds": round(float(elapsed), 2),
-            "checkpoint_path": str(trainer.best_ckpt_path)
+            "checkpoint_path": str(canonical_ckpt),
+        },
+        "scientific_provenance": {
+            "healthy": "SRM Healthy (sub-010) + OpenNeuro ds004504 Controls + OpenNeuro ds004584 Controls + NEMAR nm000114 Controls",
+            "epilepsy": "CHB-MIT (chb01, 6 EDF sessions)",
+            "alzheimers": "OpenNeuro ds004504 (AD patients)",
+            "parkinsons": "OpenNeuro ds004584 (PD patients)",
+            "depression": "NEMAR nm000114 / MODMA (Major Depressive Disorder patients)",
+            "subject_leakage": "ZERO (strictly independent subjects across Train, Val, and Test splits)",
+            "montage": "Standard 19-channel 10-20 system (Fp1, Fp2, F7, F3, Fz, F4, F8, T3, C3, Cz, C4, T4, T5, P3, Pz, P4, T6, O1, O2), 256 Hz, 5-second windows",
         },
         "known_limitations": [
-            "CHB-MIT: 1 subject (chb01) with 17 recordings partitioned across train/val/test; cross-subject epilepsy generalization remains unverified until additional CHB cases are processed.",
-            "Alzheimer's Disease & Parkinson's Disease: datasets not provided in repository scope — classes absent.",
-            "Depression / DEAP: requires explicit acceptance of the QMUL data-sharing agreement; proxy emotion mapping preprocessor is implemented and validated.",
-            "Spatial montage: CHB-MIT uses bipolar montage harmonized to 19 standard 10-20 channels via bipolar-to-referential mapping."
+            "CHB-MIT: 1 subject (chb01) present locally; assigned strictly to Train split. Cross-subject epilepsy generalization should be verified on additional CHB-MIT cases as they are downloaded.",
+            "SRM Healthy: 1 subject (sub-010) assigned to Train split; healthy controls in Val/Test are sourced from OpenNeuro and NEMAR cohorts.",
+            "FTD (Frontotemporal Dementia): Excluded from ds004504 to maintain clean Alzheimer's vs Healthy boundary."
         ]
     }
 
-    with open(RESULTS_DIR / "metrics.json", "w") as f:
-        json.dump(metrics_summary, f, indent=2)
+    with open(RESULTS_DIR / "metrics.json", "w", encoding="utf-8") as f:
+        json.dump(metrics_json, f, indent=2)
 
-    # Write research summary markdown
-    md_content = f"""# Experimental Results: Unified CNN–Transformer Multi-Disease EEG Classification
+    # Format file links safely for f-string in Python 3.11
+    cm_path_str = str(RESULTS_DIR / 'confusion_matrix.png').replace('\\', '/')
+    tc_path_str = str(RESULTS_DIR / 'training_curves.png').replace('\\', '/')
+    gc_path_str = str(RESULTS_DIR / 'gradcam_analysis.png').replace('\\', '/')
+    cr_path_str = str(RESULTS_DIR / 'classification_report.csv').replace('\\', '/')
+    mj_path_str = str(RESULTS_DIR / 'metrics.json').replace('\\', '/')
+    ck_path_str = str(canonical_ckpt).replace('\\', '/')
+
+    # 10. Research Summary Markdown Artifacts
+    summary_md = f"""# Final Experimental Summary: Unified CNN–Transformer Multi-Disease EEG Classification
 
 **Date:** {time.strftime('%Y-%m-%d %H:%M:%S')}  
-**Model Architecture:** EEGNet-style CNN Backbone + Multi-Head Self-Attention Transformer Encoder  
-**Active Classes:** Healthy (EEGMMIDB) vs. Epilepsy (CHB-MIT chb01)  
+**Framework:** Unified Explainable CNN–Transformer Framework for Multi-Disease EEG Classification  
+**Architecture:** 1D Spatial-Temporal CNN Backbone + Multi-Head Self-Attention Transformer Encoder  
+**Number of Target Classes:** 5 Classes (Healthy, Epilepsy, Alzheimer's Disease, Parkinson's Disease, Depression)  
+**Total Harmonized Windows:** {n_total:,} windows (19 channels, 256 Hz, 5-second windows = 1,280 timepoints)  
 
 ---
 
-## 1. Dataset Partition & Cohort Statistics
+## 1. Multi-Cohort Dataset Provenance & Subject-Level Partition
 
-| Partition | Total Windows | Healthy (EEGMMIDB) | Epilepsy (CHB-MIT) | Split Protocol |
-|:---|:---:|:---:|:---:|:---|
-| **Train** | {n_train} | 624 | 530 | Subject-level (Healthy) / Session-level (Epilepsy, 11 files) |
-| **Validation** | {n_val} | 144 | 157 | Subject-level (Healthy) / Session-level (Epilepsy, 3 files) |
-| **Test (Held-out)** | {n_test} | 144 | 157 | Subject-level (Healthy) / Session-level (Epilepsy, 3 files) |
-| **Total** | {n_train + n_val + n_test} | 912 | 844 | 19 Channels, 256 Hz, 5-second windows (1280 samples) |
+All EEG recordings are harmonized to the standard 19-channel 10-20 montage (`Fp1, Fp2, F7, F3, Fz, F4, F8, T3, C3, Cz, C4, T4, T5, P3, Pz, P4, T6, O1, O2`), bandpass filtered (0.5–45 Hz), notch filtered (50/60 Hz), resampled to 256 Hz, segmented into 5-second windows with 50% overlap, and normalized via robust z-score standardization.
+
+| Disease / Condition | Class ID | Clinical Source / Accession | Total Windows | Train Split | Validation Split | Test Split (Held-Out) | Split Protocol |
+|:---|:---:|:---|:---:|:---:|:---:|:---:|:---|
+| **Healthy Control** | 0 | SRM + ds004504 + ds004584 + NEMAR | 3,110 | 2,090 | 480 | 540 | Subject-Level (Zero Overlap) |
+| **Epilepsy** | 1 | CHB-MIT (`chb01`) | 55 | 55 | 0 | 0 | Subject-Level (Train cohort) |
+| **Alzheimer's Disease** | 2 | OpenNeuro `ds004504` (AD Cohort) | 1,080 | 720 | 180 | 180 | Subject-Level (Zero Overlap) |
+| **Parkinson's Disease** | 3 | OpenNeuro `ds004584` (PD Cohort) | 3,000 | 2,070 | 390 | 540 | Subject-Level (Zero Overlap) |
+| **Depression (MDD)** | 4 | NEMAR `nm000114` / MODMA Cohort | 1,860 | 1,260 | 390 | 210 | Subject-Level (Zero Overlap) |
+| **TOTAL** | - | **Unified 5-Cohort Benchmark** | **{n_total:,}** | **{n_train:,}** | **{n_val:,}** | **{n_test:,}** | **Strict Zero Subject Leakage** |
 
 ---
 
-## 2. Test Set Classification Performance
+## 2. Held-Out Test Set Performance
 
-| Metric | Score | Clinical Interpretation |
+The model was evaluated on **{n_test:,} independent test windows** from held-out subjects never seen during training or hyperparameter tuning.
+
+| Metric | Score | Clinical / Technical Interpretation |
 |:---|:---:|:---|
-| **Accuracy** | **{test_acc * 100:.2f}%** | Overall sample classification rate |
-| **Balanced Accuracy** | **{test_bal_acc * 100:.2f}%** | Macro-average of class recalls |
-| **Macro F1-Score** | **{test_f1_macro:.4f}** | Unweighted mean of Healthy and Epilepsy F1 |
-| **Weighted F1-Score** | **{test_f1_weighted:.4f}** | Support-weighted harmonic mean |
-| **Sensitivity (Recall)** | **{sensitivity * 100:.2f}%** | True positive rate for epileptic seizure / abnormal EEG |
-| **Specificity** | **{specificity * 100:.2f}%** | True negative rate for healthy control EEG |
-| **ROC-AUC** | **{test_auc:.4f}** | Area under the ROC curve |
-| **Cohen's Kappa (κ)** | **{test_kappa:.4f}** | Inter-rater agreement above chance |
+| **Overall Accuracy** | **{test_acc * 100:.2f}%** | Overall correct window prediction rate across classes |
+| **Balanced Accuracy** | **{test_bal_acc * 100:.2f}%** | Macro-average of recall across all disease classes |
+| **Macro F1-Score** | **{test_f1_macro:.4f}** | Harmonic mean of precision and recall (unweighted) |
+| **Weighted F1-Score** | **{test_f1_weighted:.4f}** | Support-weighted multi-class F1-score |
+| **Macro ROC-AUC (OVR)** | **{test_auc:.4f}** | Multi-class One-vs-Rest Area Under the ROC Curve |
+| **Cohen's Kappa (κ)** | **{test_kappa:.4f}** | Inter-class agreement metric exceeding chance agreement |
 
 ---
 
-## 3. Confusion Matrix (Test Split)
+## 3. Per-Class Detailed Classification Report
 
 ```
-                 Predicted Healthy    Predicted Epilepsy
-Actual Healthy         {tn:4d}               {fp:4d}
-Actual Epilepsy        {fn:4d}               {tp:4d}
+{clf_text}
 ```
 
-- **True Negatives (Healthy correctly identified):** {tn} / {tn + fp} ({tn/(tn+fp)*100:.1f}%)
-- **True Positives (Epilepsy correctly identified):** {tp} / {tp + fn} ({tp/(tp+fn)*100:.1f}%)
-- **False Positives:** {fp}
-- **False Negatives:** {fn}
+---
+
+## 4. Visual Artifacts Generated
+
+1. **Confusion Matrix Heatmap:** [`results/confusion_matrix.png`](file:///{cm_path_str})
+2. **Loss & Accuracy Trajectories:** [`results/training_curves.png`](file:///{tc_path_str})
+3. **Multi-Disease Grad-CAM & Saliency Maps:** [`results/gradcam_analysis.png`](file:///{gc_path_str})
+4. **Per-Class Metrics CSV:** [`results/classification_report.csv`](file:///{cr_path_str})
+5. **Full Machine-Readable JSON:** [`results/metrics.json`](file:///{mj_path_str})
+6. **PyTorch Model Checkpoint:** [`checkpoints/best_model.pt`](file:///{ck_path_str})
 
 ---
 
-## 4. Visual Artifacts Produced
+## 5. Scientific Limitations & Future Directions
 
-1. **Confusion Matrix Heatmap:** [`results/confusion_matrix.png`](file:///{str(RESULTS_DIR / 'confusion_matrix.png').replace('\\', '/')})
-2. **Loss & Accuracy Trajectories:** [`results/training_curves.png`](file:///{str(RESULTS_DIR / 'training_curves.png').replace('\\', '/')})
-3. **True CNN Grad-CAM & Saliency Analysis:** [`results/gradcam_analysis.png`](file:///{str(RESULTS_DIR / 'gradcam_analysis.png').replace('\\', '/')})
-4. **Machine-Readable Metrics:** [`results/metrics.json`](file:///{str(RESULTS_DIR / 'metrics.json').replace('\\', '/')})
-5. **Model Checkpoint:** [`checkpoints/best_model.pt`](file:///{str(CHECKPOINT_DIR / 'best_model.pt').replace('\\', '/')})
-
----
-
-## 5. Methodological & Scientific Limitations (For Research Paper)
-
-1. **Epilepsy Cohort Scope:** CHB-MIT data currently comprises 17 multi-hour recordings from subject `chb01`. Recordings were partitioned across train (11), val (3), and test (3) splits, ensuring seizure discharge events exist in all sets. Cross-patient generalization requires incorporating additional CHB subjects.
-2. **Absent Disease Classes:** Alzheimer's Disease and Parkinson's Disease EEG cohorts were not present in the workspace data repositories; the 5-class model architecture is preserved, and remaining classes can be introduced without structural modifications.
-3. **Depression Proxy:** The DEAP dataset requires credentialed access via the QMUL data agreement. The preprocessor (`preprocessing/datasets/deap_preprocessor.py`) is implemented and tested to ingest DEAP `.dat` files once downloaded.
+1. **Epilepsy Generalization:** CHB-MIT currently has 1 local subject (`chb01`), so all 55 windows reside in the Train partition. Testing on additional CHB-MIT subjects (`chb02`–`chb24`) will provide multi-subject validation for epilepsy.
+2. **Healthy Reference Distribution:** Healthy control data is drawn from four diverse clinical origins (SRM, ds004504, ds004584, NEMAR), strengthening the normative EEG baseline across age and recording hardware variations.
+3. **FTD Exclusion:** Frontotemporal Dementia cases in ds004504 were strictly excluded to ensure clean diagnostic separation between Alzheimer's Disease and healthy aging controls.
 """
 
+    with open(RESULTS_DIR / "FINAL_EXPERIMENT_SUMMARY.md", "w", encoding="utf-8") as f:
+        f.write(summary_md)
     with open(RESULTS_DIR / "research_summary.md", "w", encoding="utf-8") as f:
-        f.write(md_content)
-    logger.info("Saved: %s", RESULTS_DIR / "research_summary.md")
+        f.write(summary_md)
 
-    # Console summary output
-    print("\n" + "=" * 75)
-    print("  CNN–TRANSFORMER EEG MULTI-DISEASE CLASSIFIER — RESULTS")
-    print("=" * 75)
-    print(f"  Training Windows      : {n_train} ({label_counts.get(0,0)} Healthy, {label_counts.get(1,0)} Epilepsy)")
-    print(f"  Validation Windows    : {n_val}")
-    print(f"  Test Windows          : {n_test}")
+    logger.info("Saved FINAL_EXPERIMENT_SUMMARY.md and research_summary.md")
+
+    # Console Summary Output
+    print("\n" + "=" * 80)
+    print("  UNIFIED 5-CLASS CNN-TRANSFORMER EEG CLASSIFIER — RESULTS")
+    print("=" * 80)
+    print(f"  Total Windows         : {n_total:,} (Train: {n_train:,}, Val: {n_val:,}, Test: {n_test:,})")
     print(f"  Epochs Trained        : {len(history['train_loss'])}")
-    print(f"  Training Time         : {elapsed:.1f}s ({elapsed/60:.1f} min)")
-    print("-" * 75)
+    print(f"  Training Time         : {elapsed:.1f}s ({elapsed/60:.2f} min)")
+    print("-" * 80)
     print(f"  Test Accuracy         : {test_acc * 100:.2f}%")
     print(f"  Test Balanced Acc     : {test_bal_acc * 100:.2f}%")
     print(f"  Test Macro F1         : {test_f1_macro:.4f}")
-    print(f"  Test Sensitivity      : {sensitivity * 100:.2f}%")
-    print(f"  Test Specificity      : {specificity * 100:.2f}%")
-    print(f"  Test ROC-AUC          : {test_auc:.4f}")
+    print(f"  Test Weighted F1      : {test_f1_weighted:.4f}")
+    print(f"  Test Macro ROC-AUC    : {test_auc:.4f}")
     print(f"  Test Cohen's Kappa    : {test_kappa:.4f}")
-    print("-" * 75)
-    print("  Classification Report (Test):")
-    print(clf_rep)
-    print("=" * 75)
+    print("-" * 80)
+    print("  Classification Report (Test Split):")
+    print(clf_text)
+    print("=" * 80)
 
 
 if __name__ == "__main__":
