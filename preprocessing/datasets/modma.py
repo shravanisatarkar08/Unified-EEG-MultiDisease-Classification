@@ -1,139 +1,446 @@
 ﻿"""
-MODMA depression EEG dataset handler.
-Dataset: MODMA (Multi-modal Open Dataset for Mental-disorder Analysis)
+NEMAR nm000114 depression EEG dataset handler.
 
-STATUS: DATA ACCESS BLOCKER
--------------------------------
-The MODMA dataset is distributed as split archive files (e.g., .zip.001,
-.zip.002, ...). Reconstruction and extraction requires:
-  1. All archive parts present locally.
-  2. Microsoft Visual C++ build tools (for pyEDFlib extraction on Windows).
-  3. OR a Linux environment with unzip/7z available.
+The repository keeps the historical module name "modma" for compatibility
+with the existing preprocessing configuration, but the current raw data
+under datasets/raw/depression/ is NEMAR nm000114.
 
-This module:
-  - Inspects the archive directory without modifying or deleting files.
-  - Reports whether extraction is feasible.
-  - Documents the blocker clearly if it cannot proceed.
+Labels:
+    sub-HS*   -> healthy
+    sub-MDDS* -> depression
 
-To use MODMA when the data IS available and extracted:
-  - Place .mat or .edf files under datasets/raw/depression/
-  - A participants CSV/JSON mapping subject ID -> group (depression/healthy)
-    must also be present.
+Valid recordings:
+    eyesClosed
+    eyesOpen
 
-DO NOT: rename, delete, concatenate, or otherwise modify split archive files.
+Excluded:
+    P300 task recordings
 """
 
 import os
 import glob
 import logging
 
+import numpy as np
+
+try:
+    import mne
+    HAS_MNE = True
+except ImportError:
+    HAS_MNE = False
+
+from ..config import (
+    TARGET_SRATE,
+    WINDOW_SEC,
+    OVERLAP,
+    WINDOW_SAMPLES,
+    N_CHANNELS,
+    DATASET_PATHS,
+    DATASET_OUTPUT,
+    L_FREQ,
+    H_FREQ,
+)
+from ..segment import segment_continuous
+from ..metadata import WindowMetadata, save_metadata
+from ..common import normalize_windows, select_and_reorder_channels
+
 logger = logging.getLogger(__name__)
 
-BLOCKER_MSG = (
-    "MODMA DATASET: DATA ACCESS BLOCKER\n"
-    "  Reason: MODMA is distributed as split archives (.zip.001, .zip.002, ...).\n"
-    "  Extraction requires Microsoft Visual C++ build tools on Windows (for\n"
-    "  pyEDFlib) AND all archive parts present.\n"
-    "  The split archives will NOT be modified.\n"
-    "  Action required: Extract MODMA archives in a Linux environment,\n"
-    "  then place extracted .mat/.edf files under datasets/raw/depression/.\n"
-    "  Until then, MODMA preprocessing is skipped."
-)
+MAX_WINDOWS_PER_FILE = 30
+
+LABEL_HEALTHY = "healthy"
+LABEL_DEPRESSION = "depression"
 
 
-def inspect_raw_dir(raw_dir):
-    """Inspect MODMA raw directory without modifying any files.
+def inspect_raw_dir(raw_dir=None):
+    """Summarize the local NEMAR nm000114 package without fabricating participant counts.
 
-    Returns a status dict describing what was found.
+    The on-disk BIDS package currently contains 30 ``sub-HS*`` folders and
+    34 ``sub-MDDS*`` folders. Source documentation describes 34 participants;
+    this function reports folder counts as observed and does not claim 64
+    unique clinical participants.
     """
-    status = {
-        'raw_dir': raw_dir,
-        'exists': False,
-        'split_archives': [],
-        'edf_files': [],
-        'mat_files': [],
-        'can_proceed': False,
-        'blocker': None,
+    if raw_dir is None:
+        raw_dir = DATASET_PATHS["modma"]
+
+    hs_folders = sorted(
+        p for p in glob.glob(os.path.join(raw_dir, "sub-HS*"))
+        if os.path.isdir(p)
+    )
+    mdds_folders = sorted(
+        p for p in glob.glob(os.path.join(raw_dir, "sub-MDDS*"))
+        if os.path.isdir(p)
+    )
+    files = _find_eeg_files(raw_dir) if os.path.isdir(raw_dir) else []
+    p300 = glob.glob(os.path.join(raw_dir, "sub-*", "eeg", "*task-p300*.edf"))
+
+    summary = {
+        "raw_dir": raw_dir,
+        "hs_folders": len(hs_folders),
+        "mdds_folders": len(mdds_folders),
+        "eligible_resting_edf": len(files),
+        "p300_edf": len(p300),
+        "documentation_note": (
+            "Observed BIDS folders: {hs} HS + {mdds} MDDS. "
+            "Source documentation describes 34 participants. "
+            "Do not equate folder count with unique clinical participants."
+        ).format(hs=len(hs_folders), mdds=len(mdds_folders)),
     }
+    logger.info("NEMAR inspect_raw_dir: %s", summary)
+    return summary
+
+
+def _find_eeg_files(raw_dir):
+    """Find eligible NEMAR EDF recordings.
+
+    Only eyesClosed and eyesOpen recordings are included.
+    P300 recordings are explicitly excluded.
+    """
+    pattern = os.path.join(raw_dir, "sub-*", "eeg", "*.edf")
+    all_files = sorted(glob.glob(pattern))
+
+    eligible = []
+    excluded_p300 = 0
+
+    for path in all_files:
+        name = os.path.basename(path).lower()
+
+        if "task-p300" in name:
+            excluded_p300 += 1
+            continue
+
+        if "task-eyesclosed" in name or "task-eyesopen" in name:
+            eligible.append(path)
+
+    logger.info(
+        "NEMAR depression discovery: total EDF=%d, "
+        "eligible resting-state=%d, P300 excluded=%d",
+        len(all_files),
+        len(eligible),
+        excluded_p300,
+    )
+
+    return eligible
+
+
+def _get_subject_and_label(file_path):
+    """Extract subject ID and diagnostic label from NEMAR folder name."""
+    subject_dir = os.path.basename(
+        os.path.dirname(os.path.dirname(file_path))
+    )
+
+    if subject_dir.startswith("sub-"):
+        subject_id = subject_dir[4:]
+    else:
+        subject_id = subject_dir
+
+    if subject_id.startswith("HS"):
+        label = LABEL_HEALTHY
+    elif subject_id.startswith("MDDS"):
+        label = LABEL_DEPRESSION
+    else:
+        logger.warning(
+            "Skipping file with unknown NEMAR subject prefix: %s",
+            file_path,
+        )
+        return None, None
+
+    return subject_id, label
+
+
+def _get_recording_id(file_path, subject_id, label):
+    """Create a stable recording identifier."""
+    filename = os.path.splitext(os.path.basename(file_path))[0]
+
+    # Remove the BIDS subject prefix from the filename when possible.
+    prefix = f"sub-{subject_id}_"
+    if filename.startswith(prefix):
+        filename = filename[len(prefix):]
+
+    return f"{subject_id}_{label}_{filename}"
+
+
+def _load_eeg(file_path):
+    """Load an EDF recording with MNE."""
+    if not HAS_MNE:
+        logger.error("MNE is not installed.")
+        return None
+
+    try:
+        return mne.io.read_raw_edf(
+            file_path,
+            preload=True,
+            verbose=False,
+        )
+    except Exception as e:
+        logger.error("Failed to load %s: %s", file_path, e)
+        return None
+
+
+def _apply_filters(raw):
+    """Apply project-standard filtering and resampling."""
+    srate = raw.info["sfreq"]
+
+    notch = [f for f in (50.0, 60.0) if f < srate / 2]
+    if notch:
+        raw.notch_filter(notch, verbose=False)
+
+    raw.filter(
+        L_FREQ,
+        H_FREQ,
+        fir_design="firwin",
+        verbose=False,
+    )
+
+    if srate != TARGET_SRATE:
+        raw.resample(TARGET_SRATE, verbose=False)
+
+    return raw
+
+
+def process_recording(
+    file_path,
+    raw_dir,
+    output_dir,
+    max_windows=None,
+):
+    """Process one NEMAR resting-state EDF recording."""
+    subject_id, label = _get_subject_and_label(file_path)
+
+    if subject_id is None:
+        return []
+
+    raw = _load_eeg(file_path)
+    if raw is None:
+        return []
+
+    logger.info(
+        "[%s] sfreq=%.1f Hz, ch=%d, dur=%.1fs, label=%s, file=%s",
+        subject_id,
+        raw.info["sfreq"],
+        len(raw.ch_names),
+        raw.times[-1] if len(raw.times) else 0.0,
+        label,
+        os.path.basename(file_path),
+    )
+
+    try:
+        raw = _apply_filters(raw)
+    except Exception as e:
+        logger.error(
+            "Filtering/resampling failed for %s: %s",
+            file_path,
+            e,
+        )
+        del raw
+        return []
+
+    try:
+        data, channels_found = select_and_reorder_channels(raw)
+    except Exception as e:
+        logger.error(
+            "Channel harmonization failed for %s: %s",
+            file_path,
+            e,
+        )
+        del raw
+        return []
+
+    del raw
+
+    if len(channels_found) < N_CHANNELS // 2:
+        logger.warning(
+            "[%s] Only %d harmonized channels found; skipping.",
+            subject_id,
+            len(channels_found),
+        )
+        return []
+
+    try:
+        windows, time_ranges = segment_continuous(
+            data,
+            srate=TARGET_SRATE,
+        )
+    except Exception as e:
+        logger.error(
+            "Segmentation failed for %s: %s",
+            file_path,
+            e,
+        )
+        return []
+
+    if len(windows) == 0:
+        logger.warning("No windows created for %s", file_path)
+        return []
+
+    limit = max_windows or MAX_WINDOWS_PER_FILE
+    windows = windows[:limit]
+    time_ranges = time_ranges[:limit]
+
+    windows = normalize_windows(windows)
+
+    os.makedirs(output_dir, exist_ok=True)
+
+    recording_id = _get_recording_id(
+        file_path,
+        subject_id,
+        label,
+    )
+
+    all_meta = []
+
+    for i, (ws, we) in enumerate(time_ranges):
+        fname = f"{recording_id}_{i:06d}.npy"
+
+        np.save(
+            os.path.join(output_dir, fname),
+            windows[i],
+        )
+
+        all_meta.append(
+            WindowMetadata(
+                dataset="modma",
+                subject_id=subject_id,
+                recording_id=recording_id,
+                label=label,
+                window_idx=i,
+                window_start=ws,
+                window_end=we,
+                n_channels=N_CHANNELS,
+                srate=TARGET_SRATE,
+                n_channels_found=len(channels_found),
+                file_path=fname,
+            )
+        )
+
+    logger.info(
+        "[%s] Created %d '%s' windows.",
+        recording_id,
+        len(all_meta),
+        label,
+    )
+
+    return all_meta
+
+
+def process_dataset(
+    raw_dir=None,
+    output_dir=None,
+    max_subjects=None,
+    max_windows_per_recording=None,
+):
+    """Process NEMAR nm000114 healthy + depression EEG recordings."""
+
+    if raw_dir is None:
+        raw_dir = DATASET_PATHS["modma"]
+
+    if output_dir is None:
+        output_dir = DATASET_OUTPUT["modma"]
 
     if not os.path.isdir(raw_dir):
-        status['blocker'] = f"Directory not found: {raw_dir}"
-        return status
-
-    status['exists'] = True
-
-    # Look for split archives (do NOT open or modify them)
-    for pattern in ['*.zip.*', '*.part*', '*.rar', '*.7z']:
-        found = glob.glob(os.path.join(raw_dir, '**', pattern), recursive=True)
-        status['split_archives'].extend(found)
-
-    # Look for already-extracted EEG files
-    status['edf_files'] = glob.glob(os.path.join(raw_dir, '**', '*.edf'),
-                                    recursive=True)
-    status['mat_files'] = glob.glob(os.path.join(raw_dir, '**', '*.mat'),
-                                    recursive=True)
-
-    n_edf = len(status['edf_files'])
-    n_mat = len(status['mat_files'])
-    n_arc = len(status['split_archives'])
-
-    if n_edf > 0 or n_mat > 0:
-        status['can_proceed'] = True
-        logger.info(f"MODMA: Found {n_edf} EDF and {n_mat} MAT files — "
-                    "preprocessing may be attempted.")
-    elif n_arc > 0:
-        status['blocker'] = (
-            f"MODMA: Found {n_arc} split archive file(s) but no extracted EEG "
-            "files. Archives will NOT be modified. "
-            "Please extract on Linux and place files in datasets/raw/depression/."
+        logger.error(
+            "NEMAR depression raw directory not found: %s",
+            raw_dir,
         )
-        logger.warning(status['blocker'])
-    else:
-        status['blocker'] = (
-            "MODMA: No EEG files or archives found in "
-            f"{raw_dir}. Dataset unavailable."
-        )
-        logger.warning(status['blocker'])
-
-    return status
-
-
-def process_dataset(raw_dir=None, output_dir=None, **kwargs):
-    """Attempt MODMA preprocessing; document blocker if data unavailable.
-
-    Returns
-    -------
-    list of WindowMetadata (empty if data unavailable)
-    """
-    from ..config import DATASET_PATHS, DATASET_OUTPUT
-    if raw_dir is None:
-        raw_dir = DATASET_PATHS['modma']
-    if output_dir is None:
-        output_dir = DATASET_OUTPUT['modma']
-
-    status = inspect_raw_dir(raw_dir)
-
-    if status['blocker']:
-        logger.error("MODMA preprocessing BLOCKED:\n" + status['blocker'])
-        print("\n" + BLOCKER_MSG + "\n")
         return []
 
-    if not status['can_proceed']:
+    files = _find_eeg_files(raw_dir)
+
+    if not files:
+        logger.error(
+            "No eligible NEMAR eyesClosed/eyesOpen EDF recordings found."
+        )
         return []
 
-    # If extracted files are present, attempt basic processing
-    logger.info("MODMA extracted files found — attempting preprocessing...")
-    logger.warning(
-        "MODMA preprocessing is not fully implemented. "
-        "A participants label file (participants.tsv or labels.csv) "
-        "mapping subject IDs to depression/healthy labels is required."
+    if max_subjects is not None:
+        subject_ids = sorted(
+            {
+                _get_subject_and_label(path)[0]
+                for path in files
+            }
+        )
+        subject_ids = [
+            s for s in subject_ids
+            if s is not None
+        ][:max_subjects]
+
+        files = [
+            path
+            for path in files
+            if _get_subject_and_label(path)[0] in subject_ids
+        ]
+
+    n_healthy = sum(
+        1
+        for path in files
+        if _get_subject_and_label(path)[1] == LABEL_HEALTHY
     )
-    return []
+
+    n_depression = sum(
+        1
+        for path in files
+        if _get_subject_and_label(path)[1] == LABEL_DEPRESSION
+    )
+
+    logger.info(
+        "Processing NEMAR recordings: healthy=%d, depression=%d",
+        n_healthy,
+        n_depression,
+    )
+
+    os.makedirs(output_dir, exist_ok=True)
+
+    all_metadata = []
+
+    for file_path in files:
+        try:
+            metadata = process_recording(
+                file_path,
+                raw_dir,
+                output_dir,
+                max_windows=max_windows_per_recording,
+            )
+            all_metadata.extend(metadata)
+        except Exception as e:
+            logger.error(
+                "Failed recording %s: %s",
+                file_path,
+                e,
+            )
+
+    if all_metadata:
+        metadata_path = os.path.join(
+            output_dir,
+            "metadata.csv",
+        )
+        save_metadata(all_metadata, metadata_path)
+
+        n_hc_windows = sum(
+            1 for m in all_metadata
+            if m.label == LABEL_HEALTHY
+        )
+
+        n_dep_windows = sum(
+            1 for m in all_metadata
+            if m.label == LABEL_DEPRESSION
+        )
+
+        logger.info(
+            "NEMAR depression preprocessing complete: "
+            "healthy=%d windows, depression=%d windows, total=%d",
+            n_hc_windows,
+            n_dep_windows,
+            len(all_metadata),
+        )
+
+    return all_metadata
 
 
-if __name__ == '__main__':
-    logging.basicConfig(level=logging.INFO,
-                        format='%(name)s - %(levelname)s - %(message)s')
-    from preprocessing.config import DATASET_PATHS
-    status = inspect_raw_dir(DATASET_PATHS.get('modma', 'datasets/raw/depression'))
-    print("MODMA status:", status)
+if __name__ == "__main__":
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(name)s - %(levelname)s - %(message)s",
+    )
+
+    meta = process_dataset(max_subjects=2, max_windows_per_recording=10)
+    print(f"Created {len(meta)} windows")

@@ -1,4 +1,5 @@
 """
+
 Preprocessing configuration for unified EEG pipeline.
 """
 
@@ -13,7 +14,6 @@ PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RAW_DIR = os.path.join(PROJECT_ROOT, 'datasets', 'raw')
 INTERIM_DIR = os.path.join(PROJECT_ROOT, 'datasets', 'interim')
 PROCESSED_DIR = os.path.join(PROJECT_ROOT, 'datasets', 'processed')
-
 # Target parameters
 TARGET_SRATE = 256       # Hz
 WINDOW_SEC = 5           # seconds
@@ -51,6 +51,7 @@ CHANNEL_ALIASES = {
 
 # Dataset-specific raw directories
 DATASET_PATHS = {
+    'healthy': os.path.join(RAW_DIR, 'healthy'),
     'chbmit': os.path.join(RAW_DIR, 'epilepsy'),
     'alzheimer': os.path.join(RAW_DIR, 'alzheimers'),
     'parkinson': os.path.join(RAW_DIR, 'parkinsons'),
@@ -60,6 +61,7 @@ DATASET_PATHS = {
 
 # Dataset-specific output directories
 DATASET_OUTPUT = {
+    'healthy': os.path.join(PROCESSED_DIR, 'healthy'),
     'chbmit': os.path.join(PROCESSED_DIR, 'chbmit'),
     'alzheimer': os.path.join(PROCESSED_DIR, 'alzheimer'),
     'parkinson': os.path.join(PROCESSED_DIR, 'parkinson'),
