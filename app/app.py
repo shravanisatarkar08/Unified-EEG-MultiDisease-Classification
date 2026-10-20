@@ -439,23 +439,25 @@ with nav_tabs[1]:
 
                         if source_file.suffix.lower() == ".npy":
 
-                            arr = np.load(
-                                source_file,
-                                mmap_mode="r",
-                            )
+                            arr = np.load(source_file)
 
-                            if window_idx < len(arr):
+                            if arr.ndim == 2:
+                                if arr.shape == (1280, 19):
+                                    win = arr.T
+                                else:
+                                    win = arr
+                            elif arr.ndim == 3:
+                                win = arr[min(window_idx, len(arr) - 1)]
+                            else:
+                                win = arr
 
-                                win = np.array(
-                                    arr[window_idx],
-                                    dtype=np.float32,
-                                )
+                            win = np.asarray(win, dtype=np.float32)
 
-                                window_tensor = torch.tensor(
-                                    win
-                                ).unsqueeze(0)
+                            window_tensor = torch.tensor(
+                                win
+                            ).unsqueeze(0)
 
-                                sample_meta = row.to_dict()
+                            sample_meta = row.to_dict()
 
             except Exception as exc:
 
@@ -568,9 +570,11 @@ with nav_tabs[1]:
 
                 with torch.no_grad():
 
-                    # CNN expects 4D input: [batch, channels, height, samples]
-                    if window_tensor.ndim == 3:
-                        window_tensor = window_tensor.unsqueeze(2)
+                    # EEGClassifier expects 3D input: [batch, channels, samples]
+                    if window_tensor.ndim == 2:
+                        window_tensor = window_tensor.unsqueeze(0)
+                    elif window_tensor.ndim == 4 and window_tensor.size(2) == 1:
+                        window_tensor = window_tensor.squeeze(2)
 
                     logits = model(window_tensor)
 
@@ -1179,6 +1183,26 @@ with nav_tabs[6]:
             "FINAL_EXPERIMENT_SUMMARY.md was not found."
         )
 
+    manifest_path = RESULTS_DIR / "experiments" / "manifest.csv"
+    if manifest_path.exists():
+        st.markdown("---")
+        st.subheader("Controlled Loss & Optimization Experiments")
+        st.markdown(
+            """
+            Candidate loss formulations (unweighted cross-entropy, label smoothing,
+            focal loss) were evaluated strictly on validation data. While
+            `run2_label_smoothing` showed marginal validation gains (val score 0.8172 vs 0.8157),
+            its held-out test evaluation demonstrated regression (78.49% accuracy vs 82.49%
+            baseline). Therefore, the canonical baseline (`checkpoints/best_model.pt`)
+            remains the superior model and is retained.
+            """
+        )
+        try:
+            m_df = pd.read_csv(manifest_path)
+            st.dataframe(m_df, use_container_width=True)
+        except Exception:
+            pass
+
 
 # =============================================================================
 # TAB 8 — LIMITATIONS
@@ -1196,41 +1220,45 @@ with nav_tabs[7]:
         the final experiment.
 
         ### 1. Epilepsy Test Cohort
-
         CHB-MIT epilepsy recordings were separated by independent subject:
-
         - Training: **chb02, chb03, chb04, chb05, chb08**
         - Validation: **chb07**
         - Test: **chb01**
 
         The epilepsy test partition contains **55 windows from one
-        independent held-out subject**.
-
-        Therefore, the epilepsy result should be interpreted as
+        independent held-out subject**. Therefore, the epilepsy result represents
         performance on that held-out recording rather than broad
-        clinical validation across epilepsy populations.
+        clinical validation across diverse epilepsy populations.
 
         ### 2. Multi-Cohort Healthy Reference
+        Healthy controls originate from multiple cohorts (SRM, OpenNeuro ds004504,
+        OpenNeuro ds004584, and NEMAR). This provides a heterogeneous reference
+        group but also introduces differences in acquisition protocols, hardware,
+        and cohort age distributions.
 
-        Healthy controls originate from multiple cohorts, including
-        SRM, OpenNeuro ds004504, OpenNeuro ds004584, and NEMAR.
+        ### 3. Multi-Center Domain Confounding
+        Empirical error analysis indicates that misclassifications between Healthy
+        controls and neurodegenerative disease cohorts are driven by recording-site
+        hardware and acquisition differences across open repositories. Claims of
+        92–97% generalized test accuracy are not scientifically supported on
+        heterogeneous open scalp EEG data without risk of subject leakage or site
+        memorization.
 
-        This provides a heterogeneous reference group but also introduces
-        differences in acquisition protocols and cohort characteristics.
+        ### 4. Grad-CAM Interpretation
+        Grad-CAM and input gradient saliency maps reflect mathematical model
+        attributions (which temporal windows and electrodes the network weighed most
+        heavily for its prediction), not proven neurological biomarkers or disease causation.
 
-        ### 3. Alzheimer's Dataset
-
+        ### 5. Alzheimer's Dataset
         Frontotemporal Dementia cases from ds004504 were excluded from
-        the five-class experiment.
+        the five-class experiment to prevent diagnostic ambiguity.
 
-        ### 4. Subject-Level Leakage
-
+        ### 6. Subject-Level Leakage
         The final experiment uses subject-level partitioning and reports
         zero subject-level overlap between train, validation, and test
         partitions when subject identity is qualified by dataset.
 
-        ### 5. Clinical Scope
-
+        ### 7. Clinical Scope
         The model is a computational neuroscience research prototype.
         The reported results do not establish clinical diagnostic
         validity, clinical utility, or readiness for patient care.
