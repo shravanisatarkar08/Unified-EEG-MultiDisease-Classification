@@ -4,7 +4,7 @@
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.0+-ee4c2c.svg)](https://pytorch.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Streamlit App](https://img.shields.io/badge/Streamlit-Live%20Dashboard-FF4B4B.svg)](http://localhost:8501)
-[![Tests: 81 Passed](https://img.shields.io/badge/Tests-81%20Passed-brightgreen.svg)](test_pipeline.py)
+[![Tests: 84 Passed](https://img.shields.io/badge/Tests-84%20Passed-brightgreen.svg)](test_pipeline.py)
 
 A unified deep learning framework combining an **EEGNet-style CNN spatial-temporal backbone** with a **Multi-Head Self-Attention Transformer Encoder** for robust multi-disease classification and biomarker attribution across five clinical EEG categories:
 1. **Healthy Controls** (`healthy`, Class 0)
@@ -65,7 +65,7 @@ Raw Multi-Channel Scalp EEG (EDF / BDF / SET / FDT)
 ```
 
 ### Computational Specifications
-- **Total Model Parameters**: ~128,000 float32 parameters (~1.1 MB checkpoint size)
+- **Total Model Parameters**: 81,994 float32 parameters (~354 KB checkpoint size)
 - **CPU Forward Inference Latency**: ~24.8 ms per 5-second window (< 0.5% Real-Time Factor)
 - **Memory Footprint**: < 2.5 MB peak activation memory for single-window inference
 
@@ -75,12 +75,12 @@ Raw Multi-Channel Scalp EEG (EDF / BDF / SET / FDT)
 
 | Disease / Condition | Class ID | Clinical Origin / Accession | Total Windows | Train Split | Validation Split | Test Split (Held-Out) | Split Protocol |
 |:---|:---:|:---|:---:|:---:|:---:|:---:|:---|
-| **Healthy Control** | 0 | SRM Healthy + OpenNeuro `ds004504` Controls + `ds004584` Controls + NEMAR Controls | 3,110 | 2,090 | 480 | 540 | Subject-Level (Zero Overlap) |
-| **Epilepsy** | 1 | CHB-MIT (`chb01`, 6 EDF sessions) | 55 | 55 | 0 | 0 | Subject-Level (Train cohort) |
+| **Healthy Control** | 0 | SRM Healthy + OpenNeuro `ds004504` Controls + `ds004584` Controls + NEMAR Controls | 4,110 | 3,090 | 480 | 540 | Subject-Level (Zero Overlap) |
+| **Epilepsy** | 1 | CHB-MIT (7 subjects: chb01–05, 07, 08) | 438 | 326 | 57 | 55 | Subject-Level (Zero Overlap) |
 | **Alzheimer's Disease** | 2 | OpenNeuro `ds004504` (AD Patient Cohort) | 1,080 | 720 | 180 | 180 | Subject-Level (Zero Overlap) |
 | **Parkinson's Disease** | 3 | OpenNeuro `ds004584` (PD Patient Cohort) | 3,000 | 2,070 | 390 | 540 | Subject-Level (Zero Overlap) |
 | **Depression (MDD)** | 4 | NEMAR `nm000114` / MODMA (Depression Cohort) | 1,860 | 1,260 | 390 | 210 | Subject-Level (Zero Overlap) |
-| **TOTAL** | - | **Unified Multi-Disease Cohort** | **10,105** | **7,195** | **1,440** | **1,470** | **Strict Zero Subject Leakage** |
+| **TOTAL** | - | **Unified Multi-Disease Cohort** | **10,488** | **7,466** | **1,497** | **1,525** | **Strict Zero Subject Leakage** |
 
 ---
 
@@ -88,32 +88,33 @@ Raw Multi-Channel Scalp EEG (EDF / BDF / SET / FDT)
 
 The unified CNN–Transformer classifier was trained with AdamW optimizer, cosine learning rate scheduling with warmup, and class-weighted CrossEntropy loss to handle cohort balance.
 
-### Quantitative Performance (1,470 Independent Held-Out Test Windows)
+### Quantitative Performance (1,525 Independent Held-Out Test Windows)
 
 | Metric | Score | Clinical / Technical Interpretation |
 |:---|:---:|:---|
-| **Overall Accuracy** | **78.44%** | Multi-class overall correct diagnostic classification rate |
-| **Balanced Accuracy** | **82.27%** | Macro-average of recall across all disease classes |
-| **Macro ROC-AUC (OVR)** | **0.9498** | High discriminative capacity across disease vs control curves |
-| **Weighted F1-Score** | **0.7824** | Multi-class support-weighted harmonic mean |
-| **Cohen's Kappa ($\kappa$)** | **0.6959** | Substantial inter-class agreement exceeding chance |
-| **Validation Accuracy** | **74.72%** | Subject-level validation cohort performance |
+| **Overall Accuracy** | **82.49%** | Multi-class overall correct diagnostic classification rate |
+| **Balanced Accuracy** | **86.15%** | Macro-average of recall across all disease classes |
+| **Macro ROC-AUC (OVR)** | **0.9648** | High discriminative capacity across disease vs control curves |
+| **Macro F1-Score** | **0.8518** | Harmonic mean of precision and recall (unweighted) |
+| **Weighted F1-Score** | **0.8271** | Multi-class support-weighted harmonic mean |
+| **Cohen's Kappa ($\kappa$)** | **0.7572** | Substantial inter-class agreement exceeding chance |
+| **Validation Accuracy** | **76.62%** | Subject-level validation cohort performance |
 
 ### Per-Class Performance Breakdown (Held-Out Test Set)
 
 ```
 Class                 Precision     Recall   F1-Score    Support
 -----------------------------------------------------------------
-Healthy                  0.7671     0.6037     0.6756        540
-Epilepsy*                0.0000     0.0000     0.0000          0
-Alzheimer's              0.6020     1.0000     0.7516        180
-Parkinson's              0.8360     0.8870     0.8607        540
-Depression               0.9825     0.8000     0.8819        210
+Healthy                  0.7692     0.7222     0.7450        540
+Epilepsy                 1.0000     1.0000     1.0000         55
+Alzheimer's              0.6226     0.9167     0.7416        180
+Parkinson's              0.9069     0.9019     0.9044        540
+Depression               1.0000     0.7667     0.8679        210
 -----------------------------------------------------------------
-Macro Average                                  0.6340       1470
-Weighted Average                               0.7824       1470
+Macro Average            0.8597     0.8615     0.8518       1525
+Weighted Average         0.8354     0.8249     0.8271       1525
 ```
-*\*Note: CHB-MIT epilepsy data currently consists of 1 subject (`chb01`), so all 55 epilepsy windows are allocated strictly to the training cohort. Test set evaluates Healthy, Alzheimer's, Parkinson's, and Depression across independent patients.*
+*\*Note: Epilepsy cohort spans 7 independent subjects (chb01–05, 07, 08; 438 windows). In the split, chb01 (55 windows) is held out exclusively for the test split; chb04 (57 windows) for validation; and chb02, chb03, chb05, chb07, chb08 (326 windows) for training, maintaining zero subject overlap across splits.*
 
 ---
 
@@ -174,7 +175,7 @@ python scripts/build_new_index.py
 python run_new_training.py
 ```
 
-### 4. Run Test Suite (81 Passed)
+### 4. Run Test Suite (84 Passed)
 
 ```bash
 python test_pipeline.py
@@ -188,13 +189,13 @@ python test_pipeline.py
 Unified-EEG-MultiDisease-Classification/
 ├── run_new_training.py        # Real 5-class CNN-Transformer training, metrics & Grad-CAM pipeline
 ├── run_model.py               # CLI runner for quick inference & demonstration
-├── test_pipeline.py           # 81-test validation suite (100% passing)
+├── test_pipeline.py           # 84-test validation suite (100% passing)
 ├── requirements.txt           # Python dependency manifest
 ├── README.md                  # Project documentation & benchmark results
 ├── app/
 │   └── app.py                 # Streamlit interactive 5-class clinical dashboard
 ├── checkpoints/
-│   └── best_model.pt          # Best trained PyTorch model checkpoint (74.72% val acc)
+│   └── best_model.pt          # Best trained PyTorch model checkpoint (76.62% val acc)
 ├── results/
 │   ├── confusion_matrix.png   # 5-class normalized test confusion matrix heatmap
 │   ├── training_curves.png    # Loss and accuracy trajectories across epochs
@@ -226,7 +227,7 @@ Unified-EEG-MultiDisease-Classification/
 
 ## Scientific Limitations & Methodology
 
-1. **Epilepsy Cohort Scope**: CHB-MIT scalp EEG currently comprises subject `chb01` (55 windows), which was assigned strictly to the training cohort. Cross-subject epilepsy generalization should be verified on additional CHB-MIT subjects (`chb02`–`chb24`).
+1. **Epilepsy Cohort Scope**: CHB-MIT scalp EEG spans 7 independent subjects (438 windows). In the subject-level split, `chb01` (55 windows) is held out exclusively for testing, `chb04` (57 windows) for validation, and `chb02, chb03, chb05, chb07, chb08` (326 windows) for training. While this provides independent subject evaluation, testing on the full CHB-MIT cohort (`chb09`–`chb24`) remains recommended.
 2. **Healthy Reference Distribution**: Healthy control data is drawn from four diverse clinical origins (SRM, ds004504, ds004584, NEMAR), strengthening the normative EEG baseline across age and recording hardware variations.
 3. **FTD Exclusion**: Frontotemporal Dementia cases in ds004504 were strictly excluded to ensure clean diagnostic separation between Alzheimer's Disease and healthy aging controls.
 4. **Subject Leakage Guarantee**: Zero subject overlap exists across training, validation, and test splits (`train_subjects ∩ val_subjects = ∅`, `train_subjects ∩ test_subjects = ∅`, `val_subjects ∩ test_subjects = ∅`).

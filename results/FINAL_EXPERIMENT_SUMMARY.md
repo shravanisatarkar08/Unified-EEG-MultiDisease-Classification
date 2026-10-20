@@ -14,8 +14,8 @@ All EEG recordings are harmonized to the standard 19-channel 10-20 montage (`Fp1
 
 | Disease / Condition | Class ID | Clinical Source / Accession | Total Windows | Train Split | Validation Split | Test Split (Held-Out) | Split Protocol |
 |:---|:---:|:---|:---:|:---:|:---:|:---:|:---|
-| **Healthy Control** | 0 | SRM + ds004504 + ds004584 + NEMAR | 3,110 | 2,090 | 480 | 540 | Subject-Level (Zero Overlap) |
-| **Epilepsy** | 1 | CHB-MIT (`chb01`) | 55 | 55 | 0 | 0 | Subject-Level (Train cohort) |
+| **Healthy Control** | 0 | SRM + ds004504 + ds004584 + NEMAR | 4,110 | 3,090 | 480 | 540 | Subject-Level (Zero Overlap) |
+| **Epilepsy** | 1 | CHB-MIT (7 subjects: chb01–05, 07, 08) | 438 | 326 | 57 | 55 | Subject-Level (Zero Overlap) |
 | **Alzheimer's Disease** | 2 | OpenNeuro `ds004504` (AD Cohort) | 1,080 | 720 | 180 | 180 | Subject-Level (Zero Overlap) |
 | **Parkinson's Disease** | 3 | OpenNeuro `ds004584` (PD Cohort) | 3,000 | 2,070 | 390 | 540 | Subject-Level (Zero Overlap) |
 | **Depression (MDD)** | 4 | NEMAR `nm000114` / MODMA Cohort | 1,860 | 1,260 | 390 | 210 | Subject-Level (Zero Overlap) |
@@ -43,6 +43,34 @@ The model was evaluated on **1,525 independent test windows** from held-out subj
 ```
 Class                 Precision     Recall   F1-Score    Support
 -----------------------------------------------------------------
+Healthy                  0.7692     0.7222     0.7450        540
+Epilepsy                 1.0000     1.0000     1.0000         55
+Alzheimer's              0.6226     0.9167     0.7416        180
+Parkinson's              0.9069     0.9019     0.9044        540
+Depression               1.0000     0.7667     0.8679        210
+-----------------------------------------------------------------
+Macro Average            0.8597     0.8615     0.8518       1525
+Weighted Average         0.8354     0.8249     0.8271       1525
+```
+
+---
+
+## 4. Visual Artifacts Generated
+
+1. **Confusion Matrix Heatmap:** [`results/confusion_matrix.png`](file:///C:/Users/shrav/Documents/Unified-EEG-MultiDisease-Classification/results/confusion_matrix.png)
+2. **Loss & Accuracy Trajectories:** [`results/training_curves.png`](file:///C:/Users/shrav/Documents/Unified-EEG-MultiDisease-Classification/results/training_curves.png)
+3. **Multi-Disease Grad-CAM & Saliency Maps:** [`results/gradcam_analysis.png`](file:///C:/Users/shrav/Documents/Unified-EEG-MultiDisease-Classification/results/gradcam_analysis.png)
+4. **Per-Class Metrics CSV:** [`results/classification_report.csv`](file:///C:/Users/shrav/Documents/Unified-EEG-MultiDisease-Classification/results/classification_report.csv)
+5. **Full Machine-Readable JSON:** [`results/metrics.json`](file:///C:/Users/shrav/Documents/Unified-EEG-MultiDisease-Classification/results/metrics.json)
+6. **PyTorch Model Checkpoint:** [`checkpoints/best_model.pt`](file:///C:/Users/shrav/Documents/Unified-EEG-MultiDisease-Classification/checkpoints/best_model.pt)
+
+---
+
+## 5. Scientific Limitations & Future Directions
+
+1. **Epilepsy Cohort Scope:** CHB-MIT epilepsy recordings were partitioned by independent subject: Train: `chb02, chb03, chb04, chb05, chb08` (326 windows); Val: `chb07` (57 windows); Test: `chb01` (55 windows). The held-out test partition represents 55 windows from single subject `chb01`; results should not be interpreted as population-level clinical validation.
+2. **Healthy Reference Distribution:** Healthy control data is drawn from four diverse clinical origins (SRM, ds004504, ds004584, NEMAR), introducing multi-center acquisition and hardware differences that account for Healthy–disease boundary confusion.
+3. **FTD Exclusion:** Frontotemporal Dementia cases in ds004504 were strictly excluded to ensure clean diagnostic separation between Alzheimer's Disease and healthy aging controls.
 Healthy                  0.7692     0.7222     0.7450        540
 Epilepsy                 1.0000     1.0000     1.0000         55
 Alzheimer's              0.6226     0.9167     0.7416        180
