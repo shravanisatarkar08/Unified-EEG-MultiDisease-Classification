@@ -19,7 +19,13 @@
     "best_val_acc": 0.7662,
     "best_val_bal_acc": 0.8317,
     "best_val_macro_f1": 0.7996,
-    "checkpoint_path": "checkpoints/best_model.pt"
+    "checkpoint_path": "checkpoints/best_model.pt",
+    "test_eval_status": "evaluated",
+    "test_acc": 0.8249,
+    "test_bal_acc": 0.8615,
+    "test_macro_f1": 0.8518,
+    "test_weighted_f1": 0.8271,
+    "test_kappa": 0.7572
   },
   {
     "run_id": "run1_unweighted_ce",
@@ -35,7 +41,13 @@
     "best_val_acc": 0.7555,
     "best_val_bal_acc": 0.8165,
     "best_val_macro_f1": 0.7969,
-    "checkpoint_path": "C:\\Users\\shrav\\Documents\\Unified-EEG-MultiDisease-Classification\\results\\experiments\\run1_unweighted_ce\\best_model_ep007_acc0.7555.pt"
+    "checkpoint_path": "C:\\Users\\shrav\\Documents\\Unified-EEG-MultiDisease-Classification\\results\\experiments\\run1_unweighted_ce\\best_model_ep007_acc0.7555.pt",
+    "test_eval_status": "unselected_on_validation",
+    "test_acc": null,
+    "test_bal_acc": null,
+    "test_macro_f1": null,
+    "test_weighted_f1": null,
+    "test_kappa": null
   },
   {
     "run_id": "run2_label_smoothing",
@@ -57,7 +69,13 @@
     "best_val_acc": 0.7575,
     "best_val_bal_acc": 0.8321,
     "best_val_macro_f1": 0.8023,
-    "checkpoint_path": "C:\\Users\\shrav\\Documents\\Unified-EEG-MultiDisease-Classification\\results\\experiments\\run2_label_smoothing\\best_model_ep007_acc0.7575.pt"
+    "checkpoint_path": "C:\\Users\\shrav\\Documents\\Unified-EEG-MultiDisease-Classification\\results\\experiments\\run2_label_smoothing\\best_model_ep007_acc0.7575.pt",
+    "test_eval_status": "evaluated",
+    "test_acc": 0.7849,
+    "test_bal_acc": 0.8465,
+    "test_macro_f1": 0.8264,
+    "test_weighted_f1": 0.7897,
+    "test_kappa": 0.7046
   },
   {
     "run_id": "run3_focal_loss",
@@ -79,6 +97,12 @@
     "best_val_acc": 0.7214,
     "best_val_bal_acc": 0.8213,
     "best_val_macro_f1": 0.7584,
-    "checkpoint_path": "C:\\Users\\shrav\\Documents\\Unified-EEG-MultiDisease-Classification\\results\\experiments\\run3_focal_loss\\best_model_ep008_acc0.7214.pt"
+    "checkpoint_path": "C:\\Users\\shrav\\Documents\\Unified-EEG-MultiDisease-Classification\\results\\experiments\\run3_focal_loss\\best_model_ep008_acc0.7214.pt",
+    "test_eval_status": "unselected_on_validation",
+    "test_acc": null,
+    "test_bal_acc": null,
+    "test_macro_f1": null,
+    "test_weighted_f1": null,
+    "test_kappa": null
   }
 ]

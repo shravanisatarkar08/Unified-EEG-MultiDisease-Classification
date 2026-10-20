@@ -1,0 +1,6 @@
+class_id,class_name,precision,recall,f1_score,support
+0,Healthy,0.7031,0.6796,0.6911,540
+1,Epilepsy,1.0,1.0,1.0,55
+2,Alzheimer's,0.5714,1.0,0.7273,180
+3,Parkinson's,0.9205,0.8148,0.8644,540
+4,Depression,1.0,0.7381,0.8493,210
