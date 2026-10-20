@@ -852,6 +852,59 @@ class TestTrainingDataset(unittest.TestCase):
             msg=f"Subjects appear in multiple splits (leakage):\n{leaking}"
         )
 
+    # ------------------------------------------------------------------
+    # 11. Deterministic topological Pz interpolation
+    # ------------------------------------------------------------------
+
+    def test_pz_topological_interpolation(self):
+        """Topological Pz interpolation must produce finite, standardized values for missing Pz and leave other channels and datasets untouched."""
+        from training.dataset import interpolate_missing_channels
+        import numpy as np
+
+        rng = np.random.RandomState(42)
+        window = rng.randn(19, 1280).astype(np.float32)
+
+        # Case A: Parkinson's input with Pz missing (channel 14 flat zero)
+        pd_window = window.copy()
+        pd_window[14, :] = 0.0
+
+        interpolated = interpolate_missing_channels(
+            pd_window, missing_channels="Pz", is_bipolar=False
+        )
+
+        # 1. Pz must be non-zero and finite
+        self.assertTrue(np.all(np.isfinite(interpolated)))
+        self.assertGreater(float(np.std(interpolated[14])), 0.9)
+        self.assertAlmostEqual(float(np.mean(interpolated[14])), 0.0, places=4)
+
+        # 2. Other 18 channels must be exactly unchanged
+        self.assertTrue(np.all(interpolated[:14] == pd_window[:14]))
+        self.assertTrue(np.all(interpolated[15:] == pd_window[15:]))
+
+        # 3. Expected topological formula verification
+        cz = pd_window[9]
+        p3 = pd_window[13]
+        p4 = pd_window[15]
+        o1 = pd_window[17]
+        o2 = pd_window[18]
+        expected_raw = 0.25 * cz + 0.25 * p3 + 0.25 * p4 + 0.125 * o1 + 0.125 * o2
+        expected_norm = (expected_raw - np.mean(expected_raw)) / np.std(expected_raw)
+        np.testing.assert_allclose(interpolated[14], expected_norm, rtol=1e-5, atol=1e-5)
+
+        # Case B: Dataset with Pz present (e.g. Alzheimer's) must be completely untouched
+        alz_window = window.copy()
+        alz_result = interpolate_missing_channels(
+            alz_window, missing_channels="", is_bipolar=False
+        )
+        self.assertTrue(np.all(alz_result == alz_window))
+
+        # Case C: Bipolar montage (CHB-MIT) must be completely untouched
+        bipolar_window = window.copy()
+        bipolar_result = interpolate_missing_channels(
+            bipolar_window, missing_channels="Pz", is_bipolar=True
+        )
+        self.assertTrue(np.all(bipolar_result == bipolar_window))
+
 
 
 class TestFeatureExtraction(unittest.TestCase):

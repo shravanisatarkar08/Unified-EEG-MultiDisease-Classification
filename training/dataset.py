@@ -292,6 +292,63 @@ _deap_cache: Dict[str, Optional[np.ndarray]] = {}
 
 
 # ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# Channel Imputation / Surface Interpolation
+# ---------------------------------------------------------------------------
+
+def interpolate_missing_channels(
+    raw_window: np.ndarray,
+    missing_channels: List[str] | str = "",
+    is_bipolar: bool = False,
+) -> np.ndarray:
+    """Apply topological nearest-neighbor scalp surface interpolation for missing channels.
+
+    Currently handles missing Pz (channel index 14 in TARGET_19_MONOPOLAR) in monopolar
+    10-20 montages (e.g. OpenNeuro ds004584 Parkinson's cohort):
+      Index  9: Cz (anterior midline)
+      Index 13: P3 (left parietal)
+      Index 15: P4 (right parietal)
+      Index 17: O1 (left occipital)
+      Index 18: O2 (right occipital)
+
+    Topological 4-direction nearest-neighbor scalp surface interpolation:
+      Pz_hat = 0.25 * Cz + 0.25 * P3 + 0.25 * P4 + 0.125 * O1 + 0.125 * O2
+
+    Followed by per-channel z-score standardization (zero mean, unit variance) to match
+    the standardized amplitude distribution of surrounding channels.
+
+    If montage is bipolar or Pz is not among missing channels (or already active),
+    the input array is returned unmodified.
+    """
+    if is_bipolar or raw_window.shape[0] < 19:
+        return raw_window
+
+    if isinstance(missing_channels, str):
+        missing_list = [c.strip().upper() for c in missing_channels.split("|") if c.strip()]
+    elif isinstance(missing_channels, (list, tuple, set)):
+        missing_list = [str(c).strip().upper() for c in missing_channels]
+    else:
+        missing_list = []
+
+    # Check if Pz is recorded as missing or has flat zero variance
+    if "PZ" in missing_list or float(np.std(raw_window[14])) < 1e-6:
+        cz = raw_window[9]
+        p3 = raw_window[13]
+        p4 = raw_window[15]
+        o1 = raw_window[17]
+        o2 = raw_window[18]
+        pz_interp = 0.25 * cz + 0.25 * p3 + 0.25 * p4 + 0.125 * o1 + 0.125 * o2
+        pz_std = float(np.std(pz_interp))
+        if pz_std > 1e-6:
+            pz_interp = (pz_interp - float(np.mean(pz_interp))) / pz_std
+        output = raw_window.copy()
+        output[14] = pz_interp.astype(raw_window.dtype)
+        return output
+
+    return raw_window
+
+
+# ---------------------------------------------------------------------------
 # PyTorch Dataset
 # ---------------------------------------------------------------------------
 
@@ -313,6 +370,9 @@ class EEGDataset(Dataset):
         ``source_file`` paths in the index.
     cache_size : int
         Number of MNE Raw file handles to keep open simultaneously.
+    interpolate_missing : bool
+        If True, applies deterministic topological nearest-neighbor scalp surface
+        interpolation to missing channels (e.g. Pz in ds004584). Default False.
 
     Outputs per item
     ----------------
@@ -330,10 +390,12 @@ class EEGDataset(Dataset):
         index_df: pd.DataFrame,
         project_root: Path | str = PROJECT_ROOT_DEFAULT,
         cache_size: int = 2,
+        interpolate_missing: bool = False,
     ) -> None:
         self.index_df = index_df.reset_index(drop=True)
         self.project_root = Path(project_root)
         self._cache = _RawFileCache(maxsize=cache_size)
+        self.interpolate_missing = interpolate_missing
 
     # ------------------------------------------------------------------
     def __len__(self) -> int:
@@ -447,12 +509,6 @@ class EEGDataset(Dataset):
                 )
                 raw_window = np.zeros((N_CHANNELS, N_SAMPLES), dtype=np.float32)
 
-        # ---- Tensor conversion ----------------------------------------
-        eeg_tensor = torch.from_numpy(raw_window)  # [19, 1280], float32
-
-        # ---- Label ----------------------------------------------------
-        class_label_idx = int(row["class_label_idx"])
-
         # ---- Provenance metadata dict ---------------------------------
         missing_raw = row.get("missing_channels", "")
         missing_channels = (
@@ -460,6 +516,20 @@ class EEGDataset(Dataset):
             if pd.notna(missing_raw) and str(missing_raw).strip()
             else []
         )
+
+        # ---- Optional deterministic topological channel interpolation --
+        if self.interpolate_missing:
+            raw_window = interpolate_missing_channels(
+                raw_window,
+                missing_channels=missing_channels,
+                is_bipolar=is_bipolar,
+            )
+
+        # ---- Tensor conversion ----------------------------------------
+        eeg_tensor = torch.from_numpy(raw_window)  # [19, 1280], float32
+
+        # ---- Label ----------------------------------------------------
+        class_label_idx = int(row["class_label_idx"])
 
         meta = {
             "dataset_name": str(row["dataset_name"]),
@@ -489,6 +559,7 @@ def get_dataloaders(
     pin_memory: bool = False,
     cache_size: int = 2,
     shuffle_train: bool = True,
+    interpolate_missing: bool = False,
 ) -> Dict[str, DataLoader]:
     """
     Build train / val / test DataLoaders from ``model_dataset_index.csv``.
@@ -513,6 +584,9 @@ def get_dataloaders(
         Number of Raw file handles to keep open per worker.
     shuffle_train : bool
         Shuffle the training split each epoch.
+    interpolate_missing : bool
+        If True, applies deterministic topological nearest-neighbor scalp surface
+        interpolation to missing channels (e.g. Pz in ds004584). Default False.
 
     Returns
     -------
@@ -564,6 +638,7 @@ def get_dataloaders(
             index_df=split_df,
             project_root=project_root,
             cache_size=cache_size,
+            interpolate_missing=interpolate_missing,
         )
 
         loader = DataLoader(

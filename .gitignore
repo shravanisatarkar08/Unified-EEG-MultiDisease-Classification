@@ -242,3 +242,4 @@ checkpoints/
 runs/
 *.pt
 results/experiments/**/*.pt
+scratch/
