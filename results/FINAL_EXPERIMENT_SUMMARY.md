@@ -66,36 +66,27 @@ Weighted Average         0.8354     0.8249     0.8271       1525
 
 ---
 
-## 5. Scientific Limitations & Future Directions
+## 5. Controlled Loss-Function Experiments (Candidate Evaluation)
 
-1. **Epilepsy Cohort Scope:** CHB-MIT epilepsy recordings were partitioned by independent subject: Train: `chb02, chb03, chb04, chb05, chb08` (326 windows); Val: `chb07` (57 windows); Test: `chb01` (55 windows). The held-out test partition represents 55 windows from single subject `chb01`; results should not be interpreted as population-level clinical validation.
+Controlled optimization experiments were executed across alternative loss formulations (`results/experiments/manifest.json` and `manifest.csv`). The validation-winning candidate (`run2_label_smoothing`) was evaluated strictly once on the held-out test split (1,525 windows, zero subject overlap):
+
+| Metric | Canonical Baseline (`run0`) | Candidate (`run2_label_smoothing`) | Delta | Outcome |
+| :--- | :---: | :---: | :---: | :--- |
+| **Accuracy** | **82.49%** | 78.49% | -4.00% | Canonical baseline retained |
+| **Balanced Accuracy** | **86.15%** | 84.65% | -1.50% | Canonical baseline retained |
+| **Macro F1-Score** | **0.8518** | 0.8264 | -0.0254 | Canonical baseline retained |
+| **Weighted F1-Score** | **0.8271** | 0.7897 | -0.0374 | Canonical baseline retained |
+| **Cohen's Kappa ($\kappa$)** | **0.7572** | 0.7046 | -0.0526 | Canonical baseline retained |
+| **Macro ROC-AUC (OVR)** | **0.9648** | 0.9548 | -0.0100 | Canonical baseline retained |
+
+Decision: `checkpoints/best_model.pt` is confirmed and retained as the canonical production model checkpoint.
+
+---
+
+## 6. Scientific Limitations & Future Directions
+
+1. **Epilepsy Cohort Scope:** CHB-MIT epilepsy recordings were partitioned by independent subject: Train: `chb02, chb03, chb04, chb05, chb08` (326 windows); Val: `chb07` (57 windows); Test: `chb01` (55 windows). The held-out test partition represents 55 windows from single held-out subject `chb01`; while strictly independent from train/val, results should not be interpreted as population-level clinical validation.
 2. **Healthy Reference Distribution:** Healthy control data is drawn from four diverse clinical origins (SRM, ds004504, ds004584, NEMAR), introducing multi-center acquisition and hardware differences that account for Healthy–disease boundary confusion.
 3. **FTD Exclusion:** Frontotemporal Dementia cases in ds004504 were strictly excluded to ensure clean diagnostic separation between Alzheimer's Disease and healthy aging controls.
-Healthy                  0.7692     0.7222     0.7450        540
-Epilepsy                 1.0000     1.0000     1.0000         55
-Alzheimer's              0.6226     0.9167     0.7416        180
-Parkinson's              0.9069     0.9019     0.9044        540
-Depression               1.0000     0.7667     0.8679        210
------------------------------------------------------------------
-Macro Average                                  0.8518       1525
-Weighted Average                               0.8271       1525
-```
-
----
-
-## 4. Visual Artifacts Generated
-
-1. **Confusion Matrix Heatmap:** [`results/confusion_matrix.png`](file:///C:/Users/shrav/Documents/Unified-EEG-MultiDisease-Classification/results/confusion_matrix.png)
-2. **Loss & Accuracy Trajectories:** [`results/training_curves.png`](file:///C:/Users/shrav/Documents/Unified-EEG-MultiDisease-Classification/results/training_curves.png)
-3. **Multi-Disease Grad-CAM & Saliency Maps:** [`results/gradcam_analysis.png`](file:///C:/Users/shrav/Documents/Unified-EEG-MultiDisease-Classification/results/gradcam_analysis.png)
-4. **Per-Class Metrics CSV:** [`results/classification_report.csv`](file:///C:/Users/shrav/Documents/Unified-EEG-MultiDisease-Classification/results/classification_report.csv)
-5. **Full Machine-Readable JSON:** [`results/metrics.json`](file:///C:/Users/shrav/Documents/Unified-EEG-MultiDisease-Classification/results/metrics.json)
-6. **PyTorch Model Checkpoint:** [`checkpoints/best_model.pt`](file:///C:/Users/shrav/Documents/Unified-EEG-MultiDisease-Classification/checkpoints/best_model.pt)
-
----
-
-## 5. Scientific Limitations & Future Directions
-
-1. **Epilepsy Generalization:** CHB-MIT currently has 1 local subject (`chb01`), so all 55 windows reside in the Train partition. Testing on additional CHB-MIT subjects (`chb02`–`chb24`) will provide multi-subject validation for epilepsy.
-2. **Healthy Reference Distribution:** Healthy control data is drawn from four diverse clinical origins (SRM, ds004504, ds004584, NEMAR), strengthening the normative EEG baseline across age and recording hardware variations.
-3. **FTD Exclusion:** Frontotemporal Dementia cases in ds004504 were strictly excluded to ensure clean diagnostic separation between Alzheimer's Disease and healthy aging controls.
+4. **Subject Leakage Guarantee:** Zero subject overlap exists across training, validation, and test splits (`train_subjects ∩ val_subjects = ∅`, `train_subjects ∩ test_subjects = ∅`, `val_subjects ∩ test_subjects = ∅`).
+5. **Benchmark Demonstration Samples:** The prepackaged single-window demonstration arrays in the dashboard/CLI are intended solely for technical pipeline verification and interface testing. They do not constitute independent generalization evidence or clinical diagnostic claims.

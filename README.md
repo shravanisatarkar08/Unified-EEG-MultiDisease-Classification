@@ -114,7 +114,22 @@ Depression               1.0000     0.7667     0.8679        210
 Macro Average            0.8597     0.8615     0.8518       1525
 Weighted Average         0.8354     0.8249     0.8271       1525
 ```
-*\*Note: Epilepsy cohort spans 7 independent subjects (chb01–05, 07, 08; 438 windows). In the split, chb01 (55 windows) is held out exclusively for the test split; chb04 (57 windows) for validation; and chb02, chb03, chb05, chb07, chb08 (326 windows) for training, maintaining zero subject overlap across splits.*
+*\*Note: Epilepsy cohort spans 7 independent subjects (chb01–05, 07, 08; 438 windows). In the subject-level split, chb01 (55 windows) is held out exclusively for the test split; chb07 (57 windows) for validation; and chb02, chb03, chb04, chb05, chb08 (326 windows) for training, maintaining zero subject overlap across splits.*
+
+### Controlled Loss Optimization Experiments (Candidate Evaluation)
+
+To test whether alternative loss formulations could alleviate cross-cohort boundary confusion without test-set leakage, controlled experiments were conducted (`manifest.json` / `manifest.csv`). The validation-winning candidate (`run2_label_smoothing`, validation score 0.8172 vs baseline 0.8157) was evaluated strictly once on the held-out test split (1,525 windows):
+
+| Test Metric | Canonical Baseline (`run0`) | Candidate (`run2_label_smoothing`) | Delta | Outcome |
+| :--- | :---: | :---: | :---: | :--- |
+| **Accuracy** | **82.49%** | 78.49% | -4.00% | Canonical baseline retained |
+| **Balanced Accuracy** | **86.15%** | 84.65% | -1.50% | Canonical baseline retained |
+| **Macro F1-Score** | **0.8518** | 0.8264 | -0.0254 | Canonical baseline retained |
+| **Weighted F1-Score** | **0.8271** | 0.7897 | -0.0374 | Canonical baseline retained |
+| **Cohen's Kappa ($\kappa$)** | **0.7572** | 0.7046 | -0.0526 | Canonical baseline retained |
+| **Macro ROC-AUC (OVR)** | **0.9648** | 0.9548 | -0.0100 | Canonical baseline retained |
+
+*Scientific Takeaway: Label smoothing softened boundary probabilities during training, improving validation calibration, but regressed generalization on unseen subjects by increasing Alzheimer's false positives. `checkpoints/best_model.pt` is confirmed as the canonical release checkpoint.*
 
 ---
 
@@ -227,10 +242,11 @@ Unified-EEG-MultiDisease-Classification/
 
 ## Scientific Limitations & Methodology
 
-1. **Epilepsy Cohort Scope**: CHB-MIT scalp EEG spans 7 independent subjects (438 windows). In the subject-level split, `chb01` (55 windows) is held out exclusively for testing, `chb04` (57 windows) for validation, and `chb02, chb03, chb05, chb07, chb08` (326 windows) for training. While this provides independent subject evaluation, testing on the full CHB-MIT cohort (`chb09`–`chb24`) remains recommended.
+1. **Epilepsy Cohort Scope**: CHB-MIT scalp EEG spans 7 independent subjects (438 windows). In the subject-level split, `chb01` (55 windows) is held out exclusively for testing, `chb07` (57 windows) for validation, and `chb02, chb03, chb04, chb05, chb08` (326 windows) for training. While this provides independent subject evaluation, testing on the full CHB-MIT cohort (`chb09`–`chb24`) remains recommended.
 2. **Healthy Reference Distribution**: Healthy control data is drawn from four diverse clinical origins (SRM, ds004504, ds004584, NEMAR), strengthening the normative EEG baseline across age and recording hardware variations.
 3. **FTD Exclusion**: Frontotemporal Dementia cases in ds004504 were strictly excluded to ensure clean diagnostic separation between Alzheimer's Disease and healthy aging controls.
 4. **Subject Leakage Guarantee**: Zero subject overlap exists across training, validation, and test splits (`train_subjects ∩ val_subjects = ∅`, `train_subjects ∩ test_subjects = ∅`, `val_subjects ∩ test_subjects = ∅`).
+5. **Benchmark Demonstration Samples**: The representative 5-class demonstration EEG windows provided in the interactive dashboard and CLI are intended solely for technical pipeline verification and interface testing. They do not constitute independent generalization evidence or clinical diagnostic claims.
 
 ---
 
