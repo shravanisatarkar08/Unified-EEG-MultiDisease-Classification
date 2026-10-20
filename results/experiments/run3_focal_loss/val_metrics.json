@@ -1,0 +1,22 @@
+{
+  "run_id": "run3_focal_loss",
+  "description": "Multi-Class Focal Loss (gamma=1.5, weighted)",
+  "loss_type": "focal",
+  "class_weights": [
+    0.5594,
+    1.7222,
+    1.1589,
+    0.6835,
+    0.876
+  ],
+  "label_smoothing": 0.0,
+  "focal_gamma": 1.5,
+  "epochs_trained": 8,
+  "best_epoch": 8,
+  "elapsed_seconds": 441.42,
+  "best_val_score": 0.7898,
+  "best_val_acc": 0.7214,
+  "best_val_bal_acc": 0.8213,
+  "best_val_macro_f1": 0.7584,
+  "checkpoint_path": "C:\\Users\\shrav\\Documents\\Unified-EEG-MultiDisease-Classification\\results\\experiments\\run3_focal_loss\\best_model_ep008_acc0.7214.pt"
+}

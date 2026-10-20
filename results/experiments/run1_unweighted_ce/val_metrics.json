@@ -1,0 +1,16 @@
+{
+  "run_id": "run1_unweighted_ce",
+  "description": "Standard Unweighted CrossEntropy Loss",
+  "loss_type": "ce",
+  "class_weights": null,
+  "label_smoothing": 0.0,
+  "focal_gamma": 2.0,
+  "epochs_trained": 8,
+  "best_epoch": 7,
+  "elapsed_seconds": 429.24,
+  "best_val_score": 0.8067,
+  "best_val_acc": 0.7555,
+  "best_val_bal_acc": 0.8165,
+  "best_val_macro_f1": 0.7969,
+  "checkpoint_path": "C:\\Users\\shrav\\Documents\\Unified-EEG-MultiDisease-Classification\\results\\experiments\\run1_unweighted_ce\\best_model_ep007_acc0.7555.pt"
+}

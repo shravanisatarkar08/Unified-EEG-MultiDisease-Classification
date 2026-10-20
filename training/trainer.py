@@ -43,6 +43,35 @@ logger = logging.getLogger(__name__)
 # Training configuration
 # ---------------------------------------------------------------------------
 
+class FocalLoss(nn.Module):
+    """Multi-Class Focal Loss with optional class weighting."""
+
+    def __init__(
+        self,
+        weight: Optional[torch.Tensor] = None,
+        gamma: float = 2.0,
+        reduction: str = "mean",
+    ):
+        super().__init__()
+        self.weight = weight
+        self.gamma = gamma
+        self.reduction = reduction
+
+    def forward(self, logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
+        ce_loss = F.cross_entropy(logits, targets, weight=self.weight, reduction="none")
+        pt = torch.exp(-ce_loss)
+        focal = ((1.0 - pt) ** self.gamma) * ce_loss
+        if self.reduction == "mean":
+            return focal.mean()
+        elif self.reduction == "sum":
+            return focal.sum()
+        return focal
+
+
+# ---------------------------------------------------------------------------
+# Training configuration
+# ---------------------------------------------------------------------------
+
 @dataclass
 class TrainConfig:
     """Hyperparameters and paths for one training run."""
@@ -64,8 +93,14 @@ class TrainConfig:
     max_epochs:    int   = 50
     batch_size:    int   = 32
 
-    # Early stopping
+    # Early stopping & evaluation selection
     patience:      int   = 10
+    eval_metric:   str   = "val_acc"   # "val_acc", "val_macro_f1", "val_bal_acc", "val_composite"
+
+    # Loss configuration
+    loss_type:       str   = "ce"      # "ce", "label_smoothing", "focal"
+    label_smoothing: float = 0.0
+    focal_gamma:     float = 2.0
 
     # I/O
     index_csv:     str   = ""
@@ -150,7 +185,17 @@ class EEGTrainer:
                 weights = config.class_weights.to(self.device)
             else:
                 weights = torch.tensor(config.class_weights, dtype=torch.float32).to(self.device)
-        self.criterion = nn.CrossEntropyLoss(weight=weights)
+
+        if config.loss_type == "focal":
+            self.criterion = FocalLoss(weight=weights, gamma=config.focal_gamma)
+            logger.info("Using FocalLoss (gamma=%.2f)", config.focal_gamma)
+        elif config.loss_type == "label_smoothing" or config.label_smoothing > 0.0:
+            smoothing = config.label_smoothing if config.label_smoothing > 0.0 else 0.1
+            self.criterion = nn.CrossEntropyLoss(weight=weights, label_smoothing=smoothing)
+            logger.info("Using CrossEntropyLoss with label_smoothing=%.3f", smoothing)
+        else:
+            self.criterion = nn.CrossEntropyLoss(weight=weights)
+            logger.info("Using standard CrossEntropyLoss (weights=%s)", "custom" if weights is not None else "uniform")
 
         # Optimiser
         self.optimizer = torch.optim.AdamW(
@@ -161,13 +206,15 @@ class EEGTrainer:
 
         # Checkpointing
         Path(config.checkpoint_dir).mkdir(parents=True, exist_ok=True)
-        self.best_val_acc  = 0.0
+        self.best_val_acc   = 0.0
+        self.best_val_score = 0.0
         self.best_ckpt_path: Optional[Path] = None
 
         # History
         self.history: Dict[str, List[float]] = {
             "train_loss": [], "train_acc": [],
             "val_loss":   [], "val_acc":   [],
+            "val_bal_acc": [], "val_macro_f1": [], "val_score": [],
         }
 
         # TensorBoard (optional)
@@ -209,9 +256,12 @@ class EEGTrainer:
     # ------------------------------------------------------------------
 
     @torch.no_grad()
-    def _val_epoch(self, loader: DataLoader) -> Tuple[float, float]:
+    def _val_epoch(self, loader: DataLoader) -> Tuple[float, float, float, float]:
         self.model.eval()
         m = EpochMetrics()
+        all_preds: List[int] = []
+        all_labels: List[int] = []
+
         for eeg, labels, _ in loader:
             eeg    = eeg.to(self.device)
             labels = labels.to(self.device)
@@ -219,20 +269,52 @@ class EEGTrainer:
             loss   = self.criterion(logits, labels)
             preds  = logits.argmax(dim=-1)
             m.update(loss.item(), preds, labels)
+            all_preds.extend(preds.cpu().tolist())
+            all_labels.extend(labels.cpu().tolist())
+
         n = max(1, len(loader))
-        return m.avg_loss(n), m.accuracy
+        y_true = np.array(all_labels)
+        y_pred = np.array(all_preds)
+        n_classes = self.cfg.num_classes
+
+        recalls: List[float] = []
+        f1s: List[float] = []
+        for c in range(n_classes):
+            tp = int(((y_true == c) & (y_pred == c)).sum())
+            fn = int(((y_true == c) & (y_pred != c)).sum())
+            fp = int(((y_true != c) & (y_pred == c)).sum())
+            support = tp + fn
+            rec = float(tp) / max(1, support) if support > 0 else 0.0
+            prec = float(tp) / max(1, tp + fp) if (tp + fp) > 0 else 0.0
+            f1 = float(2 * prec * rec / max(1e-9, prec + rec)) if (prec + rec) > 0 else 0.0
+            if support > 0:
+                recalls.append(rec)
+            f1s.append(f1)
+
+        bal_acc = float(np.mean(recalls)) if recalls else 0.0
+        macro_f1 = float(np.mean(f1s)) if f1s else 0.0
+
+        return m.avg_loss(n), m.accuracy, bal_acc, macro_f1
 
     # ------------------------------------------------------------------
     # Checkpoint save / load
     # ------------------------------------------------------------------
 
-    def save_checkpoint(self, epoch: int, val_acc: float) -> Path:
+    def save_checkpoint(
+        self,
+        epoch: int,
+        val_acc: float,
+        val_bal_acc: float = 0.0,
+        val_macro_f1: float = 0.0,
+    ) -> Path:
         ckpt_path = Path(self.cfg.checkpoint_dir) / f"best_model_ep{epoch:03d}_acc{val_acc:.4f}.pt"
         torch.save({
             "epoch":            epoch,
             "model_state_dict": self.model.state_dict(),
             "optimizer_state":  self.optimizer.state_dict(),
             "val_acc":          val_acc,
+            "val_bal_acc":      val_bal_acc,
+            "val_macro_f1":     val_macro_f1,
             "config":           self.cfg,
         }, ckpt_path)
         return ckpt_path
@@ -258,7 +340,7 @@ class EEGTrainer:
 
         Returns
         -------
-        history dict with train_loss, train_acc, val_loss, val_acc per epoch.
+        history dict with train_loss, train_acc, val_loss, val_acc, val_bal_acc, val_macro_f1, val_score per epoch.
         """
         steps_per_epoch = len(train_loader)
         total_steps     = self.cfg.max_epochs * steps_per_epoch
@@ -274,7 +356,8 @@ class EEGTrainer:
             t0 = time.time()
 
             train_loss, train_acc = self._train_epoch(train_loader)
-            val_loss,   val_acc   = self._val_epoch(val_loader)
+            val_loss, val_acc, val_bal_acc, val_macro_f1 = self._val_epoch(val_loader)
+            val_score = 0.5 * (val_macro_f1 + val_bal_acc)
 
             # Step scheduler once per batch (already stepped inside _train_epoch
             # via closure, so step at epoch level here)
@@ -287,11 +370,14 @@ class EEGTrainer:
             self.history["train_acc"].append(train_acc)
             self.history["val_loss"].append(val_loss)
             self.history["val_acc"].append(val_acc)
+            self.history["val_bal_acc"].append(val_bal_acc)
+            self.history["val_macro_f1"].append(val_macro_f1)
+            self.history["val_score"].append(val_score)
 
             logger.info(
-                "Epoch %3d/%d | train_loss=%.4f acc=%.3f | val_loss=%.4f acc=%.3f | %.1fs",
+                "Epoch %3d/%d | train_loss=%.4f acc=%.3f | val_loss=%.4f acc=%.3f bal_acc=%.3f macro_f1=%.3f score=%.3f | %.1fs",
                 epoch, self.cfg.max_epochs,
-                train_loss, train_acc, val_loss, val_acc, elapsed,
+                train_loss, train_acc, val_loss, val_acc, val_bal_acc, val_macro_f1, val_score, elapsed,
             )
 
             if self._tb_writer:
@@ -299,14 +385,31 @@ class EEGTrainer:
                 self._tb_writer.add_scalar("Loss/val",   val_loss,   epoch)
                 self._tb_writer.add_scalar("Acc/train",  train_acc,  epoch)
                 self._tb_writer.add_scalar("Acc/val",    val_acc,    epoch)
+                self._tb_writer.add_scalar("Score/val",  val_score,  epoch)
 
-            # Save best checkpoint
-            if val_acc > self.best_val_acc:
+            # Determine criterion for checkpoint saving
+            if self.cfg.eval_metric == "val_composite":
+                curr_metric = val_score
+                is_better = curr_metric > self.best_val_score
+            elif self.cfg.eval_metric == "val_macro_f1":
+                curr_metric = val_macro_f1
+                is_better = curr_metric > self.best_val_score
+            elif self.cfg.eval_metric == "val_bal_acc":
+                curr_metric = val_bal_acc
+                is_better = curr_metric > self.best_val_score
+            else:
+                curr_metric = val_acc
+                is_better = curr_metric > self.best_val_acc
+
+            if is_better:
+                if self.cfg.eval_metric in ("val_composite", "val_macro_f1", "val_bal_acc"):
+                    self.best_val_score = curr_metric
                 self.best_val_acc = val_acc
                 if self.best_ckpt_path and self.best_ckpt_path.exists():
                     self.best_ckpt_path.unlink()
-                self.best_ckpt_path = self.save_checkpoint(epoch, val_acc)
-                logger.info("  New best model saved -> %s", self.best_ckpt_path)
+                self.best_ckpt_path = self.save_checkpoint(epoch, val_acc, val_bal_acc, val_macro_f1)
+                logger.info("  New best model saved -> %s (val_acc=%.4f, bal_acc=%.4f, macro_f1=%.4f)",
+                            self.best_ckpt_path, val_acc, val_bal_acc, val_macro_f1)
                 no_improve = 0
             else:
                 no_improve += 1

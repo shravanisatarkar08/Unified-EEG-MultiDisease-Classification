@@ -1,0 +1,84 @@
+[
+  {
+    "run_id": "baseline_run0",
+    "description": "Baseline Weighted CrossEntropy (sqrt-smoothed weights)",
+    "loss_type": "ce",
+    "class_weights": [
+      0.5594,
+      1.7222,
+      1.1589,
+      0.6835,
+      0.876
+    ],
+    "label_smoothing": 0.0,
+    "focal_gamma": 2.0,
+    "epochs_trained": 10,
+    "best_epoch": 4,
+    "elapsed_seconds": 734.96,
+    "best_val_score": 0.8157,
+    "best_val_acc": 0.7662,
+    "best_val_bal_acc": 0.8317,
+    "best_val_macro_f1": 0.7996,
+    "checkpoint_path": "checkpoints/best_model.pt"
+  },
+  {
+    "run_id": "run1_unweighted_ce",
+    "description": "Standard Unweighted CrossEntropy Loss",
+    "loss_type": "ce",
+    "class_weights": null,
+    "label_smoothing": 0.0,
+    "focal_gamma": 2.0,
+    "epochs_trained": 8,
+    "best_epoch": 7,
+    "elapsed_seconds": 429.24,
+    "best_val_score": 0.8067,
+    "best_val_acc": 0.7555,
+    "best_val_bal_acc": 0.8165,
+    "best_val_macro_f1": 0.7969,
+    "checkpoint_path": "C:\\Users\\shrav\\Documents\\Unified-EEG-MultiDisease-Classification\\results\\experiments\\run1_unweighted_ce\\best_model_ep007_acc0.7555.pt"
+  },
+  {
+    "run_id": "run2_label_smoothing",
+    "description": "Label-Smoothed CrossEntropy Loss (smoothing=0.1, weighted)",
+    "loss_type": "label_smoothing",
+    "class_weights": [
+      0.5594,
+      1.7222,
+      1.1589,
+      0.6835,
+      0.876
+    ],
+    "label_smoothing": 0.1,
+    "focal_gamma": 2.0,
+    "epochs_trained": 8,
+    "best_epoch": 7,
+    "elapsed_seconds": 427.4,
+    "best_val_score": 0.8172,
+    "best_val_acc": 0.7575,
+    "best_val_bal_acc": 0.8321,
+    "best_val_macro_f1": 0.8023,
+    "checkpoint_path": "C:\\Users\\shrav\\Documents\\Unified-EEG-MultiDisease-Classification\\results\\experiments\\run2_label_smoothing\\best_model_ep007_acc0.7575.pt"
+  },
+  {
+    "run_id": "run3_focal_loss",
+    "description": "Multi-Class Focal Loss (gamma=1.5, weighted)",
+    "loss_type": "focal",
+    "class_weights": [
+      0.5594,
+      1.7222,
+      1.1589,
+      0.6835,
+      0.876
+    ],
+    "label_smoothing": 0.0,
+    "focal_gamma": 1.5,
+    "epochs_trained": 8,
+    "best_epoch": 8,
+    "elapsed_seconds": 441.42,
+    "best_val_score": 0.7898,
+    "best_val_acc": 0.7214,
+    "best_val_bal_acc": 0.8213,
+    "best_val_macro_f1": 0.7584,
+    "checkpoint_path": "C:\\Users\\shrav\\Documents\\Unified-EEG-MultiDisease-Classification\\results\\experiments\\run3_focal_loss\\best_model_ep008_acc0.7214.pt"
+  }
+]

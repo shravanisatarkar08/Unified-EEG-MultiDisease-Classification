@@ -1,0 +1,22 @@
+{
+  "run_id": "run2_label_smoothing",
+  "description": "Label-Smoothed CrossEntropy Loss (smoothing=0.1, weighted)",
+  "loss_type": "label_smoothing",
+  "class_weights": [
+    0.5594,
+    1.7222,
+    1.1589,
+    0.6835,
+    0.876
+  ],
+  "label_smoothing": 0.1,
+  "focal_gamma": 2.0,
+  "epochs_trained": 8,
+  "best_epoch": 7,
+  "elapsed_seconds": 427.4,
+  "best_val_score": 0.8172,
+  "best_val_acc": 0.7575,
+  "best_val_bal_acc": 0.8321,
+  "best_val_macro_f1": 0.8023,
+  "checkpoint_path": "C:\\Users\\shrav\\Documents\\Unified-EEG-MultiDisease-Classification\\results\\experiments\\run2_label_smoothing\\best_model_ep007_acc0.7575.pt"
+}

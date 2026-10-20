@@ -1087,6 +1087,36 @@ class TestTrainer(unittest.TestCase):
             ))
             self.assertGreater(len(ckpts), 0, msg="No checkpoint file saved")
 
+    def test_focal_loss(self):
+        """FocalLoss must compute valid scalar loss and backprop without NaN."""
+        from training.trainer import FocalLoss
+        fl = FocalLoss(gamma=2.0)
+        logits = torch.randn(6, 5, requires_grad=True)
+        targets = torch.randint(0, 5, (6,))
+        loss = fl(logits, targets)
+        self.assertFalse(torch.isnan(loss).item())
+        self.assertGreaterEqual(loss.item(), 0.0)
+        loss.backward()
+        self.assertIsNotNone(logits.grad)
+        self.assertFalse(torch.isnan(logits.grad).any().item())
+
+    def test_trainer_loss_variants(self):
+        """EEGTrainer should initialize cleanly with different loss types."""
+        from training.trainer import EEGTrainer, TrainConfig
+        for lt in ["ce", "label_smoothing", "focal"]:
+            cfg = TrainConfig(loss_type=lt, label_smoothing=0.1, focal_gamma=1.5)
+            trainer = EEGTrainer(cfg)
+            self.assertIsNotNone(trainer.criterion)
+
+    def test_trainer_tracks_advanced_metrics(self):
+        """Trainer history must record val_bal_acc, val_macro_f1, and val_score."""
+        from training.trainer import run_demo
+        history = run_demo(num_classes=5, n_epochs=2)
+        self.assertIn("val_bal_acc", history)
+        self.assertIn("val_macro_f1", history)
+        self.assertIn("val_score", history)
+        self.assertEqual(len(history["val_score"]), 2)
+
 
 class TestEvaluator(unittest.TestCase):
     """STEP 7: Evaluation metrics smoke tests."""
