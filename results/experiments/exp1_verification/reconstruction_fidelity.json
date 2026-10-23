@@ -1,0 +1,44 @@
+{
+  "alzheimer": {
+    "n_subjects_sampled": 50,
+    "n_subjects_analyzed": 50,
+    "n_subjects_skipped": 0,
+    "pearson_r_mean": 0.9882,
+    "pearson_r_std": 0.0337,
+    "pearson_r_min": 0.7637,
+    "pearson_r_median": 0.996,
+    "pearson_r_max": 0.9997,
+    "mae_zscore_mean": 0.0915,
+    "mae_zscore_std": 0.0861,
+    "rmse_zscore_mean": 0.1149,
+    "rmse_zscore_std": 0.1022
+  },
+  "modma": {
+    "n_subjects_sampled": 50,
+    "n_subjects_analyzed": 50,
+    "n_subjects_skipped": 0,
+    "pearson_r_mean": 0.7518,
+    "pearson_r_std": 0.4028,
+    "pearson_r_min": -0.945,
+    "pearson_r_median": 0.9351,
+    "pearson_r_max": 0.9897,
+    "mae_zscore_mean": 0.4395,
+    "mae_zscore_std": 0.3607,
+    "rmse_zscore_mean": 0.5472,
+    "rmse_zscore_std": 0.4439
+  },
+  "srm_healthy": {
+    "n_subjects_sampled": 1,
+    "n_subjects_analyzed": 1,
+    "n_subjects_skipped": 0,
+    "pearson_r_mean": 0.8057,
+    "pearson_r_std": 0.0,
+    "pearson_r_min": 0.8057,
+    "pearson_r_median": 0.8057,
+    "pearson_r_max": 0.8057,
+    "mae_zscore_mean": 0.5074,
+    "mae_zscore_std": 0.0,
+    "rmse_zscore_mean": 0.6234,
+    "rmse_zscore_std": 0.0
+  }
+}

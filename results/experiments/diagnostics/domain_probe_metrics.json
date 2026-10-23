@@ -1,0 +1,294 @@
+{
+  "diagnostic": "Dataset-Domain Confounding Probe (Step 1)",
+  "model_checkpoint": "C:\\Users\\shrav\\Documents\\Unified-EEG-MultiDisease-Classification\\checkpoints\\best_model.pt",
+  "model_architecture": "EEGClassifier (CNN-Transformer, 81,994 params)",
+  "model_weights_status": "FROZEN (eval mode, zero parameter updates)",
+  "domain_classes": [
+    "alzheimer",
+    "chbmit",
+    "modma",
+    "parkinson",
+    "srm_healthy"
+  ],
+  "split_counts": {
+    "train_total": 7466,
+    "val_total": 1497,
+    "train_by_domain": {
+      "parkinson": 3150,
+      "modma": 2610,
+      "alzheimer": 1350,
+      "chbmit": 326,
+      "srm_healthy": 30
+    },
+    "val_by_domain": {
+      "parkinson": 660,
+      "modma": 480,
+      "alzheimer": 300,
+      "chbmit": 57
+    }
+  },
+  "primary_probe_transformer_cls": {
+    "representation": "Transformer CLS Token (input to classification head)",
+    "input_dimension": 64,
+    "probe_architecture": "Linear(64 -> 5)",
+    "probe_parameters": 325,
+    "majority_class_baseline": {
+      "majority_training_domain": "parkinson",
+      "majority_domain_index": 3,
+      "accuracy": 0.4409,
+      "balanced_accuracy": 0.25,
+      "macro_f1": 0.153
+    },
+    "train_metrics": {
+      "accuracy": 0.9889,
+      "balanced_accuracy": 0.8078,
+      "macro_f1": 0.8158,
+      "per_class": {
+        "alzheimer": {
+          "precision": 0.9823,
+          "recall": 0.9844,
+          "f1_score": 0.9834,
+          "support": 1350
+        },
+        "chbmit": {
+          "precision": 0.9879,
+          "recall": 1.0,
+          "f1_score": 0.9939,
+          "support": 326
+        },
+        "modma": {
+          "precision": 0.9825,
+          "recall": 0.992,
+          "f1_score": 0.9872,
+          "support": 2610
+        },
+        "parkinson": {
+          "precision": 0.9978,
+          "recall": 0.9959,
+          "f1_score": 0.9968,
+          "support": 3150
+        },
+        "srm_healthy": {
+          "precision": 0.5,
+          "recall": 0.0667,
+          "f1_score": 0.1176,
+          "support": 30
+        }
+      }
+    },
+    "validation_metrics": {
+      "accuracy": 0.986,
+      "balanced_accuracy": 0.9893,
+      "macro_f1": 0.9826,
+      "macro_f1_all_classes": 0.7861,
+      "per_class": {
+        "alzheimer": {
+          "precision": 0.9404,
+          "recall": 1.0,
+          "f1_score": 0.9693,
+          "support": 300
+        },
+        "chbmit": {
+          "precision": 0.9661,
+          "recall": 1.0,
+          "f1_score": 0.9828,
+          "support": 57
+        },
+        "modma": {
+          "precision": 1.0,
+          "recall": 0.9604,
+          "f1_score": 0.9798,
+          "support": 480
+        },
+        "parkinson": {
+          "precision": 1.0,
+          "recall": 0.997,
+          "f1_score": 0.9985,
+          "support": 660
+        },
+        "srm_healthy": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1_score": 0.0,
+          "support": 0
+        }
+      },
+      "confusion_matrix": [
+        [
+          300,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          57,
+          0,
+          0,
+          0
+        ],
+        [
+          19,
+          0,
+          461,
+          0,
+          0
+        ],
+        [
+          0,
+          2,
+          0,
+          658,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      ]
+    },
+    "comparison_delta_vs_majority": {
+      "accuracy_delta": 0.5451,
+      "balanced_accuracy_delta": 0.7393,
+      "macro_f1_delta": 0.8296
+    }
+  },
+  "secondary_probe_cnn_pooled": {
+    "representation": "CNN Average-Pooled Features (input to Transformer)",
+    "input_dimension": 64,
+    "probe_architecture": "Linear(64 -> 5)",
+    "probe_parameters": 325,
+    "majority_class_baseline": {
+      "majority_training_domain": "parkinson",
+      "majority_domain_index": 3,
+      "accuracy": 0.4409,
+      "balanced_accuracy": 0.25,
+      "macro_f1": 0.153
+    },
+    "train_metrics": {
+      "accuracy": 0.9897,
+      "balanced_accuracy": 0.9653,
+      "macro_f1": 0.9521,
+      "per_class": {
+        "alzheimer": {
+          "precision": 0.9792,
+          "recall": 0.9778,
+          "f1_score": 0.9785,
+          "support": 1350
+        },
+        "chbmit": {
+          "precision": 0.9969,
+          "recall": 0.9969,
+          "f1_score": 0.9969,
+          "support": 326
+        },
+        "modma": {
+          "precision": 0.9874,
+          "recall": 0.9897,
+          "f1_score": 0.9885,
+          "support": 2610
+        },
+        "parkinson": {
+          "precision": 0.9981,
+          "recall": 0.9952,
+          "f1_score": 0.9967,
+          "support": 3150
+        },
+        "srm_healthy": {
+          "precision": 0.7429,
+          "recall": 0.8667,
+          "f1_score": 0.8,
+          "support": 30
+        }
+      }
+    },
+    "validation_metrics": {
+      "accuracy": 0.976,
+      "balanced_accuracy": 0.9834,
+      "macro_f1": 0.9555,
+      "macro_f1_all_classes": 0.7644,
+      "per_class": {
+        "alzheimer": {
+          "precision": 0.9346,
+          "recall": 1.0,
+          "f1_score": 0.9662,
+          "support": 300
+        },
+        "chbmit": {
+          "precision": 0.8028,
+          "recall": 1.0,
+          "f1_score": 0.8906,
+          "support": 57
+        },
+        "modma": {
+          "precision": 0.9978,
+          "recall": 0.9562,
+          "f1_score": 0.9766,
+          "support": 480
+        },
+        "parkinson": {
+          "precision": 1.0,
+          "recall": 0.9773,
+          "f1_score": 0.9885,
+          "support": 660
+        },
+        "srm_healthy": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1_score": 0.0,
+          "support": 0
+        }
+      },
+      "confusion_matrix": [
+        [
+          300,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          57,
+          0,
+          0,
+          0
+        ],
+        [
+          21,
+          0,
+          459,
+          0,
+          0
+        ],
+        [
+          0,
+          14,
+          1,
+          645,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      ]
+    },
+    "comparison_delta_vs_majority": {
+      "accuracy_delta": 0.5351,
+      "balanced_accuracy_delta": 0.7334,
+      "macro_f1_delta": 0.8025
+    }
+  },
+  "scientific_interpretation": {
+    "high_domain_score_meaning": "A high domain probe score indicates that dataset acquisition identity is strongly linearly separable in the model's frozen latent space. This confirms that intermediate layers retain significant domain signatures.",
+    "causality_caveat": "This linear probe demonstrates domain separability but does not alone prove causal reliance on recording artifacts, nor does it prove disease biomarkers are absent."
+  }
+}

@@ -1,0 +1,188 @@
+{
+  "alpha": 0.0,
+  "selected_epoch": 8,
+  "validation_accuracy": 0.7635,
+  "validation_balanced_accuracy": 0.8357,
+  "validation_macro_f1": 0.802,
+  "validation_weighted_f1": 0.7531,
+  "validation_composite_score": 0.8188,
+  "per_class": {
+    "healthy": {
+      "precision": 0.711,
+      "recall": 0.4458,
+      "f1_score": 0.548,
+      "support": 480
+    },
+    "epilepsy": {
+      "precision": 1.0,
+      "recall": 0.9825,
+      "f1_score": 0.9912,
+      "support": 57
+    },
+    "alzheimers": {
+      "precision": 0.6085,
+      "recall": 0.95,
+      "f1_score": 0.7419,
+      "support": 180
+    },
+    "parkinsons": {
+      "precision": 0.6909,
+      "recall": 0.9,
+      "f1_score": 0.7817,
+      "support": 390
+    },
+    "depression": {
+      "precision": 1.0,
+      "recall": 0.9,
+      "f1_score": 0.9474,
+      "support": 390
+    }
+  },
+  "healthy_recall_by_dataset": {
+    "alzheimer": {
+      "support": 120,
+      "correct": 12,
+      "recall": 0.1
+    },
+    "modma": {
+      "support": 90,
+      "correct": 89,
+      "recall": 0.9889
+    },
+    "parkinson": {
+      "support": 270,
+      "correct": 113,
+      "recall": 0.4185
+    }
+  },
+  "confusion_matrix": [
+    [
+      214,
+      0,
+      109,
+      157,
+      0
+    ],
+    [
+      0,
+      56,
+      1,
+      0,
+      0
+    ],
+    [
+      9,
+      0,
+      171,
+      0,
+      0
+    ],
+    [
+      39,
+      0,
+      0,
+      351,
+      0
+    ],
+    [
+      39,
+      0,
+      0,
+      0,
+      351
+    ]
+  ],
+  "runtime_seconds": 591.48,
+  "training_history": {
+    "train_loss": [
+      1.5756,
+      1.1318,
+      0.5031,
+      0.4156,
+      0.3787,
+      0.3528,
+      0.3353,
+      0.3323
+    ],
+    "train_ce_loss": [
+      1.5756,
+      1.1318,
+      0.5031,
+      0.4156,
+      0.3787,
+      0.3528,
+      0.3353,
+      0.3323
+    ],
+    "train_cont_loss": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "train_acc": [
+      0.3035,
+      0.5312,
+      0.7218,
+      0.7594,
+      0.7901,
+      0.8028,
+      0.8113,
+      0.8154
+    ],
+    "val_loss": [
+      1.5461,
+      0.6964,
+      0.5391,
+      0.508,
+      0.5613,
+      0.5243,
+      0.5052,
+      0.5208
+    ],
+    "val_acc": [
+      0.3153,
+      0.672,
+      0.7308,
+      0.7368,
+      0.7308,
+      0.7682,
+      0.7649,
+      0.7635
+    ],
+    "val_bal_acc": [
+      0.1967,
+      0.7931,
+      0.8194,
+      0.8112,
+      0.789,
+      0.8312,
+      0.8356,
+      0.8357
+    ],
+    "val_macro_f1": [
+      0.0961,
+      0.6777,
+      0.7594,
+      0.7705,
+      0.778,
+      0.7997,
+      0.8012,
+      0.802
+    ],
+    "val_score": [
+      0.1464,
+      0.7354,
+      0.7894,
+      0.7909,
+      0.7835,
+      0.8155,
+      0.8184,
+      0.8188
+    ]
+  }
+}

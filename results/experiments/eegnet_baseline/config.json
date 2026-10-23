@@ -1,0 +1,20 @@
+{
+  "model_name": "Compact-EEGNet",
+  "n_channels": 19,
+  "n_samples": 1280,
+  "num_classes": 5,
+  "F1": 8,
+  "D": 2,
+  "F2": 16,
+  "kernel_length": 64,
+  "dropout_rate": 0.25,
+  "lr": 0.001,
+  "weight_decay": 0.01,
+  "warmup_epochs": 2,
+  "max_epochs": 12,
+  "batch_size": 64,
+  "patience": 6,
+  "eval_metric": "val_composite",
+  "seed": 42,
+  "interpolate_missing": false
+}

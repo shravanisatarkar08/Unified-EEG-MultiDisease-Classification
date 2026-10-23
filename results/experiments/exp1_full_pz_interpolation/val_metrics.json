@@ -1,0 +1,182 @@
+{
+  "experiment": "exp1_full_pz_interpolation",
+  "description": "Full 8-Epoch Training: Distance-weighted 5-electrode Pz interpolation for ds004584 Parkinson's windows",
+  "epochs_trained": 8,
+  "elapsed_seconds": 600.06,
+  "elapsed_minutes": 10.0,
+  "seed": 42,
+  "final_train_loss": 0.3451,
+  "final_train_acc": 0.8075,
+  "val_accuracy": 0.7515,
+  "val_balanced_accuracy": 0.8194,
+  "val_macro_f1": 0.7896,
+  "val_weighted_f1": 0.7422,
+  "val_composite_score": 0.8045,
+  "per_class": {
+    "healthy": {
+      "precision": 0.6773,
+      "recall": 0.4417,
+      "f1_score": 0.5347,
+      "support": 480
+    },
+    "epilepsy": {
+      "precision": 1.0,
+      "recall": 0.9298,
+      "f1_score": 0.9636,
+      "support": 57
+    },
+    "alzheimers": {
+      "precision": 0.6021,
+      "recall": 0.9667,
+      "f1_score": 0.742,
+      "support": 180
+    },
+    "parkinsons": {
+      "precision": 0.6743,
+      "recall": 0.8282,
+      "f1_score": 0.7434,
+      "support": 390
+    },
+    "depression": {
+      "precision": 1.0,
+      "recall": 0.9308,
+      "f1_score": 0.9641,
+      "support": 390
+    }
+  },
+  "healthy_recall_by_dataset": {
+    "alzheimer": {
+      "support": 120,
+      "correct": 6,
+      "recall": 0.05
+    },
+    "modma": {
+      "support": 90,
+      "correct": 90,
+      "recall": 1.0
+    },
+    "parkinson": {
+      "support": 270,
+      "correct": 116,
+      "recall": 0.4296
+    }
+  },
+  "confusion_matrix": [
+    [
+      212,
+      0,
+      115,
+      153,
+      0
+    ],
+    [
+      1,
+      53,
+      0,
+      3,
+      0
+    ],
+    [
+      6,
+      0,
+      174,
+      0,
+      0
+    ],
+    [
+      67,
+      0,
+      0,
+      323,
+      0
+    ],
+    [
+      27,
+      0,
+      0,
+      0,
+      363
+    ]
+  ],
+  "training_history": {
+    "train_loss": [
+      1.5746,
+      1.1429,
+      0.5128,
+      0.4374,
+      0.4002,
+      0.3682,
+      0.3518,
+      0.3451
+    ],
+    "train_acc": [
+      0.3082,
+      0.5275,
+      0.7254,
+      0.753,
+      0.7765,
+      0.7924,
+      0.8063,
+      0.8075
+    ],
+    "val_loss": [
+      1.5481,
+      0.7044,
+      0.5802,
+      0.5532,
+      0.5349,
+      0.5471,
+      0.5548,
+      0.5144
+    ],
+    "val_acc": [
+      0.3146,
+      0.6961,
+      0.7088,
+      0.7281,
+      0.7515,
+      0.7315,
+      0.7341,
+      0.7515
+    ],
+    "val_bal_acc": [
+      0.1962,
+      0.7914,
+      0.7435,
+      0.7787,
+      0.8241,
+      0.7962,
+      0.8077,
+      0.8194
+    ],
+    "val_macro_f1": [
+      0.0959,
+      0.7053,
+      0.725,
+      0.7502,
+      0.7785,
+      0.7763,
+      0.7821,
+      0.7896
+    ],
+    "val_score": [
+      0.1461,
+      0.7484,
+      0.7343,
+      0.7645,
+      0.8013,
+      0.7862,
+      0.7949,
+      0.8045
+    ]
+  },
+  "baseline_val_comparison": {
+    "baseline_val_accuracy": 0.7662,
+    "baseline_val_balanced_acc": 0.8317,
+    "baseline_val_macro_f1": 0.7996,
+    "baseline_val_composite_score": 0.8157,
+    "baseline_healthy_alzheimer_recall": 0.0583,
+    "baseline_healthy_parkinson_recall": 0.4815,
+    "baseline_healthy_modma_recall": 1.0
+  }
+}

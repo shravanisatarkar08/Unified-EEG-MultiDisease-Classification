@@ -1,0 +1,22 @@
+{
+  "alpha": 0.0,
+  "temperature": 0.1,
+  "n_channels": 19,
+  "n_samples": 1280,
+  "num_classes": 5,
+  "embed_dim": 64,
+  "proj_dim": 64,
+  "num_heads": 4,
+  "num_layers": 2,
+  "ff_dim": 128,
+  "cnn_dropout": 0.25,
+  "trans_dropout": 0.1,
+  "lr": 0.0005,
+  "weight_decay": 0.01,
+  "warmup_epochs": 2,
+  "max_epochs": 8,
+  "batch_size": 64,
+  "patience": 5,
+  "eval_metric": "val_composite",
+  "seed": 42
+}

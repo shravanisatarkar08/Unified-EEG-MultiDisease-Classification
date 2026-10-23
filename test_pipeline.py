@@ -1273,6 +1273,48 @@ class TestExplainability(unittest.TestCase):
             self.assertEqual(attn.ndim, 1)
             self.assertGreater(len(attn), 0)
 
+
+class TestCompactEEGNet(unittest.TestCase):
+    """STEP 9: Compact EEGNet unit tests."""
+
+    def setUp(self):
+        from models.eegnet import EEGNet
+        self.B, self.C, self.T = 2, 19, 1280
+        self.model = EEGNet(n_channels=self.C, n_samples=self.T, num_classes=5)
+        self.dummy = torch.randn(self.B, self.C, self.T)
+
+    def test_eegnet_import_and_parameters(self):
+        """EEGNet should instantiate and have exactly 4,613 parameters."""
+        params = sum(p.numel() for p in self.model.parameters())
+        self.assertEqual(params, 4613)
+
+    def test_eegnet_forward_output_shape(self):
+        """EEGNet forward should produce [B, 5] logits."""
+        out = self.model(self.dummy)
+        self.assertEqual(out.shape, (self.B, 5))
+
+    def test_eegnet_extract_features_shape(self):
+        """EEGNet extract_features should produce [B, 640] latent representation."""
+        feats = self.model.extract_features(self.dummy)
+        self.assertEqual(feats.shape, (self.B, 640))
+
+    def test_eegnet_no_nan_output(self):
+        """EEGNet output should contain finite values without NaN or Inf."""
+        out = self.model(self.dummy)
+        self.assertFalse(torch.isnan(out).any())
+        self.assertFalse(torch.isinf(out).any())
+
+    def test_eegnet_gradient_flow(self):
+        """Backpropagation should generate valid non-zero gradients."""
+        out = self.model(self.dummy)
+        loss = out.sum()
+        loss.backward()
+        for name, p in self.model.named_parameters():
+            if p.requires_grad:
+                self.assertIsNotNone(p.grad, f"Missing gradient for {name}")
+                self.assertFalse(torch.isnan(p.grad).any(), f"NaN gradient in {name}")
+
+
 if __name__ == '__main__':
     # Run with verbose output
     loader = unittest.TestLoader()

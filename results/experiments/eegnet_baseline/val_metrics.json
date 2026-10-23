@@ -1,0 +1,220 @@
+{
+  "experiment": "eegnet_baseline",
+  "model_architecture": "Compact EEGNet (Lawhern et al., 2018)",
+  "parameter_count": 4613,
+  "baseline_parameter_count": 81994,
+  "parameter_reduction_ratio": 17.8,
+  "selected_epoch": 9,
+  "total_epochs_trained": 12,
+  "runtime_seconds": 869.28,
+  "runtime_minutes": 14.49,
+  "seed": 42,
+  "evaluation_split": "validation (n=1497, subject-isolated)",
+  "validation_metrics": {
+    "accuracy": 0.7435,
+    "balanced_accuracy": 0.8196,
+    "macro_f1": 0.7892,
+    "weighted_f1": 0.736,
+    "composite_score": 0.8044
+  },
+  "per_class_metrics": {
+    "healthy": {
+      "precision": 0.6677,
+      "recall": 0.4479,
+      "f1_score": 0.5362,
+      "support": 480
+    },
+    "epilepsy": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1_score": 1.0,
+      "support": 57
+    },
+    "alzheimers": {
+      "precision": 0.6,
+      "recall": 0.9167,
+      "f1_score": 0.7253,
+      "support": 180
+    },
+    "parkinsons": {
+      "precision": 0.6626,
+      "recall": 0.841,
+      "f1_score": 0.7412,
+      "support": 390
+    },
+    "depression": {
+      "precision": 1.0,
+      "recall": 0.8923,
+      "f1_score": 0.9431,
+      "support": 390
+    }
+  },
+  "healthy_recall_by_dataset": {
+    "alzheimer": {
+      "support": 120,
+      "correct": 22,
+      "recall": 0.1833
+    },
+    "modma": {
+      "support": 90,
+      "correct": 90,
+      "recall": 1.0
+    },
+    "parkinson": {
+      "support": 270,
+      "correct": 103,
+      "recall": 0.3815
+    }
+  },
+  "confusion_matrix": [
+    [
+      215,
+      0,
+      98,
+      167,
+      0
+    ],
+    [
+      0,
+      57,
+      0,
+      0,
+      0
+    ],
+    [
+      15,
+      0,
+      165,
+      0,
+      0
+    ],
+    [
+      62,
+      0,
+      0,
+      328,
+      0
+    ],
+    [
+      30,
+      0,
+      12,
+      0,
+      348
+    ]
+  ],
+  "training_history": {
+    "train_loss": [
+      1.6623,
+      1.1129,
+      0.5241,
+      0.4259,
+      0.3688,
+      0.348,
+      0.3224,
+      0.306,
+      0.2981,
+      0.2871,
+      0.2773,
+      0.2793
+    ],
+    "train_acc": [
+      0.1879,
+      0.5307,
+      0.7175,
+      0.7743,
+      0.8075,
+      0.8165,
+      0.8326,
+      0.8429,
+      0.843,
+      0.8476,
+      0.8555,
+      0.8568
+    ],
+    "val_loss": [
+      1.6616,
+      0.7331,
+      0.6311,
+      0.6033,
+      0.6066,
+      0.6578,
+      0.6101,
+      0.6569,
+      0.6639,
+      0.676,
+      0.6908,
+      0.6764
+    ],
+    "val_acc": [
+      0.1837,
+      0.6687,
+      0.7081,
+      0.7148,
+      0.7415,
+      0.7355,
+      0.7401,
+      0.7381,
+      0.7435,
+      0.7442,
+      0.7395,
+      0.7388
+    ],
+    "val_bal_acc": [
+      0.1979,
+      0.7818,
+      0.8047,
+      0.8014,
+      0.8256,
+      0.8219,
+      0.8158,
+      0.8139,
+      0.8196,
+      0.82,
+      0.8161,
+      0.8117
+    ],
+    "val_macro_f1": [
+      0.1723,
+      0.6907,
+      0.7478,
+      0.7626,
+      0.7826,
+      0.7773,
+      0.7846,
+      0.7812,
+      0.7892,
+      0.7875,
+      0.7852,
+      0.7845
+    ],
+    "val_score": [
+      0.1851,
+      0.7362,
+      0.7763,
+      0.782,
+      0.8041,
+      0.7996,
+      0.8002,
+      0.7976,
+      0.8044,
+      0.8037,
+      0.8007,
+      0.7981
+    ]
+  },
+  "canonical_baseline_comparison_val_split": {
+    "baseline_val_accuracy": 0.7662,
+    "eegnet_val_accuracy": 0.7435,
+    "delta_accuracy": -0.0227,
+    "baseline_val_balanced_acc": 0.8317,
+    "eegnet_val_balanced_acc": 0.8196,
+    "delta_balanced_accuracy": -0.0121,
+    "baseline_val_macro_f1": 0.7996,
+    "eegnet_val_macro_f1": 0.7892,
+    "delta_macro_f1": -0.0104,
+    "baseline_val_composite": 0.8157,
+    "eegnet_val_composite": 0.8044,
+    "delta_composite": -0.0113
+  }
+}
