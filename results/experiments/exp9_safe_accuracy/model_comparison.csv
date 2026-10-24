@@ -1,0 +1,13 @@
+model_name,val_accuracy,val_balanced_accuracy,val_macro_f1,ad_healthy_recall,pd_healthy_recall,modma_healthy_recall,description
+ensemble_w0.7,0.7722,0.8351,0.8055,0.1333,0.4259,1.0,Ensemble: 0.7*Exp6 + 0.3*Exp7
+ensemble_w0.8,0.7722,0.8368,0.8048,0.1,0.4185,1.0,Ensemble: 0.8*Exp6 + 0.2*Exp7
+ensemble_w0.6,0.7715,0.8296,0.8049,0.175,0.437,1.0,Ensemble: 0.6*Exp6 + 0.4*Exp7
+exp6_dann_alpha0.15,0.7715,0.8449,0.8036,0.0667,0.3889,0.9778,Exp 6 DANN Champion (alpha=0.15)
+ensemble_w0.9,0.7695,0.8411,0.8037,0.0667,0.4037,0.9778,Ensemble: 0.9*Exp6 + 0.1*Exp7
+ensemble_w0.5,0.7675,0.8219,0.8013,0.2083,0.437,1.0,Ensemble: 0.5*Exp6 + 0.5*Exp7
+canonical_baseline,0.7662,0.8317,0.7996,0.0333,0.4481,0.9889,Original CNN-Transformer checkpoint
+ensemble_w0.4,0.7602,0.8092,0.794,0.225,0.4481,1.0,Ensemble: 0.4*Exp6 + 0.6*Exp7
+ensemble_w0.3,0.7528,0.7906,0.7826,0.2417,0.4556,1.0,Ensemble: 0.3*Exp6 + 0.7*Exp7
+ensemble_w0.1,0.7515,0.7774,0.7775,0.3083,0.4815,1.0,Ensemble: 0.1*Exp6 + 0.9*Exp7
+ensemble_w0.2,0.7508,0.7786,0.7769,0.2833,0.4704,1.0,Ensemble: 0.2*Exp6 + 0.8*Exp7
+exp7_spectral_hybrid_balanced,0.7502,0.7728,0.7754,0.325,0.4963,1.0,Exp 7 Spectral Hybrid with Balanced Weights
