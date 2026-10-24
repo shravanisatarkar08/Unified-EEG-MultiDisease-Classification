@@ -1,0 +1,4 @@
+configuration,max_alpha,selected_epoch,val_accuracy,val_balanced_acc,val_macro_f1,domain_probe_acc,ad_healthy_recall,pd_healthy_recall,modma_healthy_recall,checkpoint_path
+dann_alpha0.15_linear,0.15,6,0.7715,0.8449,0.8036,0.9873,0.0667,0.3889,0.9778,results\experiments\exp6_dann_refinement\dann_alpha0.15_linear\best_model_dann_alpha0.15_linear_ep006.pt
+dann_alpha0.05_linear,0.05,6,0.7709,0.8444,0.8046,0.9873,0.0667,0.3852,0.9778,results\experiments\exp6_dann_refinement\dann_alpha0.05_linear\best_model_dann_alpha0.05_linear_ep006.pt
+exp5_champion_alpha0.10,0.1,6,0.7702,0.8438,0.8043,0.9873,0.0667,0.3889,0.9778,results\experiments\exp5_dann\dann_alpha0.10_linear\best_model_dann_alpha0.10_linear_ep006.pt

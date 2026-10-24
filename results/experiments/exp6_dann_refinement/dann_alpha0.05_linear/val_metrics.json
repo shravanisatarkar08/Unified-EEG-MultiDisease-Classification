@@ -1,0 +1,193 @@
+{
+  "run_name": "dann_alpha0.05_linear",
+  "max_alpha": 0.05,
+  "domain_loss_weight": 0.1,
+  "alpha_schedule": "linear",
+  "training_completed": true,
+  "selected_epoch": 6,
+  "runtime_seconds": 431.62,
+  "checkpoint_path": "results\\experiments\\exp6_dann_refinement\\dann_alpha0.05_linear\\best_model_dann_alpha0.05_linear_ep006.pt",
+  "validation_accuracy": 0.7709,
+  "validation_balanced_accuracy": 0.8444,
+  "validation_macro_f1": 0.8046,
+  "validation_weighted_f1": 0.7561,
+  "domain_probe_accuracy": 0.9873,
+  "per_class": {
+    "healthy": {
+      "precision": 0.7663,
+      "recall": 0.4167,
+      "f1_score": 0.5398,
+      "support": 480
+    },
+    "epilepsy": {
+      "precision": 1.0,
+      "recall": 0.9825,
+      "f1_score": 0.9912,
+      "support": 57
+    },
+    "alzheimers": {
+      "precision": 0.6,
+      "recall": 0.9667,
+      "f1_score": 0.7404,
+      "support": 180
+    },
+    "parkinsons": {
+      "precision": 0.6862,
+      "recall": 0.9308,
+      "f1_score": 0.79,
+      "support": 390
+    },
+    "depression": {
+      "precision": 1.0,
+      "recall": 0.9256,
+      "f1_score": 0.9614,
+      "support": 390
+    }
+  },
+  "healthy_recall_by_dataset": {
+    "alzheimer": {
+      "support": 120,
+      "correct": 8,
+      "recall": 0.0667
+    },
+    "parkinson": {
+      "support": 270,
+      "correct": 104,
+      "recall": 0.3852
+    },
+    "modma": {
+      "support": 90,
+      "correct": 88,
+      "recall": 0.9778
+    }
+  },
+  "confusion_matrix": [
+    [
+      200,
+      0,
+      114,
+      166,
+      0
+    ],
+    [
+      0,
+      56,
+      1,
+      0,
+      0
+    ],
+    [
+      6,
+      0,
+      174,
+      0,
+      0
+    ],
+    [
+      26,
+      0,
+      1,
+      363,
+      0
+    ],
+    [
+      29,
+      0,
+      0,
+      0,
+      361
+    ]
+  ],
+  "training_history": {
+    "train_disease_loss": [
+      1.5753,
+      1.1318,
+      0.5014,
+      0.4141,
+      0.388,
+      0.3609,
+      0.3376,
+      0.3315
+    ],
+    "train_disease_acc": [
+      0.3102,
+      0.5413,
+      0.7226,
+      0.7696,
+      0.7807,
+      0.8023,
+      0.8137,
+      0.8142
+    ],
+    "train_domain_loss": [
+      1.5756,
+      1.1656,
+      0.3239,
+      0.1388,
+      0.1209,
+      0.1243,
+      0.1089,
+      0.1038
+    ],
+    "train_domain_acc": [
+      0.377,
+      0.6354,
+      0.9274,
+      0.9707,
+      0.9687,
+      0.9657,
+      0.9705,
+      0.9736
+    ],
+    "val_loss": [
+      1.5463,
+      0.6776,
+      0.6159,
+      0.5044,
+      0.567,
+      0.52,
+      0.554,
+      0.5559
+    ],
+    "val_acc": [
+      0.3146,
+      0.6814,
+      0.6987,
+      0.7435,
+      0.7375,
+      0.7709,
+      0.7568,
+      0.7568
+    ],
+    "val_bal_acc": [
+      0.1962,
+      0.7832,
+      0.7894,
+      0.8207,
+      0.8034,
+      0.8444,
+      0.8109,
+      0.8097
+    ],
+    "val_macro_f1": [
+      0.0959,
+      0.6815,
+      0.7298,
+      0.7759,
+      0.7625,
+      0.8046,
+      0.7882,
+      0.7861
+    ],
+    "val_domain_probe_acc": [
+      0.4409,
+      0.9379,
+      0.9559,
+      0.984,
+      0.978,
+      0.9873,
+      0.9786,
+      0.9826
+    ]
+  }
+}
