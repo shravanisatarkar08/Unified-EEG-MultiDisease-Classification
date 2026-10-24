@@ -1,0 +1,5 @@
+model,accuracy,balanced_acc,macro_f1,ad_healthy_rec,pd_healthy_rec
+canonical_baseline,0.7662,0.8317,0.7996,0.0333,0.4481
+exp6_dann_alpha0.15,0.7715,0.8449,0.8036,0.0667,0.3889
+exp9_ensemble_w0.7,0.7722,0.8351,0.8055,0.1333,0.4259
+exp10_hmd_finetuning,0.7682,0.8308,0.8042,0.0583,0.563

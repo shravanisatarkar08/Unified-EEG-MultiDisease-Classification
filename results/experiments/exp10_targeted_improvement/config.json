@@ -1,0 +1,16 @@
+{
+  "run_name": "exp10_hmd_finetuning",
+  "init_checkpoint": "results\\experiments\\exp6_dann_refinement\\dann_alpha0.15_linear\\best_model_dann_alpha0.15_linear_ep006.pt",
+  "margin": 0.5,
+  "margin_loss_weight": 0.2,
+  "max_alpha": 0.15,
+  "domain_loss_weight": 0.1,
+  "alpha_schedule": "linear",
+  "lr": 0.0001,
+  "weight_decay": 0.01,
+  "warmup_epochs": 1,
+  "max_epochs": 5,
+  "batch_size": 64,
+  "patience": 4,
+  "seed": 42
+}

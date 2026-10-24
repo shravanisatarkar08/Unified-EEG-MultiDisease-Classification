@@ -1,0 +1,149 @@
+{
+  "run_name": "exp10_hmd_finetuning",
+  "selected_epoch": 2,
+  "runtime_seconds": 439.93,
+  "checkpoint_path": "results\\experiments\\exp10_targeted_improvement\\best_model_exp10_ep002.pt",
+  "validation_accuracy": 0.7682,
+  "validation_balanced_accuracy": 0.8308,
+  "validation_macro_f1": 0.8042,
+  "validation_weighted_f1": 0.7643,
+  "bootstrap_ci_95": {
+    "n_subjects_sampled": 42,
+    "n_resamples": 1000,
+    "accuracy_ci_95": [
+      0.6659,
+      0.8622
+    ],
+    "balanced_accuracy_ci_95": [
+      0.7452,
+      0.8837
+    ],
+    "macro_f1_ci_95": [
+      0.5463,
+      0.8671
+    ]
+  },
+  "per_class": {
+    "healthy": {
+      "precision": 0.693,
+      "recall": 0.5125,
+      "f1_score": 0.5892,
+      "support": 480
+    },
+    "epilepsy": {
+      "precision": 1.0,
+      "recall": 0.9474,
+      "f1_score": 0.973,
+      "support": 57
+    },
+    "alzheimers": {
+      "precision": 0.589,
+      "recall": 0.9556,
+      "f1_score": 0.7288,
+      "support": 180
+    },
+    "parkinsons": {
+      "precision": 0.7287,
+      "recall": 0.8128,
+      "f1_score": 0.7685,
+      "support": 390
+    },
+    "depression": {
+      "precision": 1.0,
+      "recall": 0.9256,
+      "f1_score": 0.9614,
+      "support": 390
+    }
+  },
+  "healthy_recall_by_dataset": {
+    "alzheimer": {
+      "support": 120,
+      "correct": 7,
+      "recall": 0.0583
+    },
+    "parkinson": {
+      "support": 270,
+      "correct": 152,
+      "recall": 0.563
+    },
+    "modma": {
+      "support": 90,
+      "correct": 87,
+      "recall": 0.9667
+    }
+  },
+  "confusion_matrix": [
+    [
+      246,
+      0,
+      116,
+      118,
+      0
+    ],
+    [
+      1,
+      54,
+      2,
+      0,
+      0
+    ],
+    [
+      8,
+      0,
+      172,
+      0,
+      0
+    ],
+    [
+      71,
+      0,
+      2,
+      317,
+      0
+    ],
+    [
+      29,
+      0,
+      0,
+      0,
+      361
+    ]
+  ],
+  "training_history": {
+    "train_d_loss": [
+      0.3441,
+      0.3447,
+      0.3224,
+      0.322,
+      0.32
+    ],
+    "train_m_loss": [
+      0.327,
+      0.2952,
+      0.2722,
+      0.268,
+      0.268
+    ],
+    "val_acc": [
+      0.7655,
+      0.7682,
+      0.7675,
+      0.7528,
+      0.7555
+    ],
+    "val_bal_acc": [
+      0.8384,
+      0.8308,
+      0.8208,
+      0.7998,
+      0.7995
+    ],
+    "val_macro_f1": [
+      0.7986,
+      0.8042,
+      0.8002,
+      0.7845,
+      0.7892
+    ]
+  }
+}
