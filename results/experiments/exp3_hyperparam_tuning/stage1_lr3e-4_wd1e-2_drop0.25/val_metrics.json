@@ -1,0 +1,164 @@
+{
+  "run_name": "stage1_lr3e-4_wd1e-2_drop0.25",
+  "stage": 1,
+  "lr": 0.0003,
+  "weight_decay": 0.01,
+  "cnn_dropout": 0.25,
+  "provenance": "freshly_trained_stage1 (full 8 epochs on train split)",
+  "training_completed": true,
+  "checkpoint_path": "results/experiments/exp3_hyperparam_tuning/stage1_lr3e-4_wd1e-2_drop0.25/best_model_stage1_lr3e-4_wd1e-2_drop0.25_ep008.pt",
+  "selected_epoch": 8,
+  "validation_accuracy": 0.7395,
+  "validation_balanced_accuracy": 0.8199,
+  "validation_macro_f1": 0.7766,
+  "validation_weighted_f1": 0.7193,
+  "per_class": {
+    "healthy": {
+      "precision": 0.6901,
+      "recall": 0.3479,
+      "f1_score": 0.4626,
+      "support": 480
+    },
+    "epilepsy": {
+      "precision": 1.0,
+      "recall": 0.9474,
+      "f1_score": 0.973,
+      "support": 57
+    },
+    "alzheimers": {
+      "precision": 0.5894,
+      "recall": 0.9889,
+      "f1_score": 0.7386,
+      "support": 180
+    },
+    "parkinsons": {
+      "precision": 0.6508,
+      "recall": 0.9128,
+      "f1_score": 0.7599,
+      "support": 390
+    },
+    "depression": {
+      "precision": 1.0,
+      "recall": 0.9026,
+      "f1_score": 0.9488,
+      "support": 390
+    }
+  },
+  "healthy_recall_by_dataset": {
+    "alzheimer": {
+      "support": 120,
+      "correct": 0,
+      "recall": 0.0
+    },
+    "modma": {
+      "support": 90,
+      "correct": 88,
+      "recall": 0.9778
+    },
+    "parkinson": {
+      "support": 270,
+      "correct": 79,
+      "recall": 0.2926
+    }
+  },
+  "confusion_matrix": [
+    [
+      167,
+      0,
+      122,
+      191,
+      0
+    ],
+    [
+      2,
+      54,
+      1,
+      0,
+      0
+    ],
+    [
+      2,
+      0,
+      178,
+      0,
+      0
+    ],
+    [
+      33,
+      0,
+      1,
+      356,
+      0
+    ],
+    [
+      38,
+      0,
+      0,
+      0,
+      352
+    ]
+  ],
+  "runtime_seconds": 576.59,
+  "training_history": {
+    "train_loss": [
+      1.5736,
+      1.3028,
+      0.5994,
+      0.4515,
+      0.4127,
+      0.3872,
+      0.3738,
+      0.3717
+    ],
+    "train_acc": [
+      0.3074,
+      0.4807,
+      0.7017,
+      0.7423,
+      0.766,
+      0.7767,
+      0.7841,
+      0.7873
+    ],
+    "val_loss": [
+      1.5463,
+      0.8851,
+      0.5507,
+      0.5384,
+      0.5633,
+      0.556,
+      0.5605,
+      0.5305
+    ],
+    "val_acc": [
+      0.3146,
+      0.6253,
+      0.7121,
+      0.7174,
+      0.7174,
+      0.7355,
+      0.7381,
+      0.7395
+    ],
+    "val_bal_acc": [
+      0.1962,
+      0.5867,
+      0.8016,
+      0.8181,
+      0.8078,
+      0.8181,
+      0.8209,
+      0.8199
+    ],
+    "val_macro_f1": [
+      0.0959,
+      0.4644,
+      0.7431,
+      0.7524,
+      0.7495,
+      0.7735,
+      0.7794,
+      0.7766
+    ]
+  }
+}
