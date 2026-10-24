@@ -1,0 +1,26 @@
+{
+  "experiment": "exp4_source_balanced",
+  "intervention": "WeightedRandomSampler with inverse source-frequency weights",
+  "lr": 0.0005,
+  "weight_decay": 0.01,
+  "cnn_dropout": 0.25,
+  "trans_dropout": 0.1,
+  "max_epochs": 8,
+  "patience": 4,
+  "batch_size": 64,
+  "seed": 42,
+  "class_weights": [
+    0.5594,
+    1.7222,
+    1.1589,
+    0.6835,
+    0.876
+  ],
+  "source_weights": {
+    "parkinson": 0.474031746031746,
+    "modma": 0.5721072796934866,
+    "alzheimer": 1.106074074074074,
+    "chbmit": 4.580368098159509,
+    "srm_healthy": 49.77333333333333
+  }
+}

@@ -1,0 +1,150 @@
+{
+  "run_name": "exp4_source_balanced",
+  "intervention": "source-balanced sampling (WeightedRandomSampler)",
+  "provenance": "freshly_trained",
+  "training_completed": true,
+  "selected_epoch": 5,
+  "checkpoint_path": "results\\experiments\\exp4_source_balanced\\best_model_exp4_ep005.pt",
+  "validation_accuracy": 0.7194,
+  "validation_balanced_accuracy": 0.8092,
+  "validation_macro_f1": 0.7565,
+  "validation_weighted_f1": 0.684,
+  "per_class": {
+    "healthy": {
+      "precision": 0.6685,
+      "recall": 0.2479,
+      "f1_score": 0.3617,
+      "support": 480
+    },
+    "epilepsy": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1_score": 1.0,
+      "support": 57
+    },
+    "alzheimers": {
+      "precision": 0.5949,
+      "recall": 0.9056,
+      "f1_score": 0.7181,
+      "support": 180
+    },
+    "parkinsons": {
+      "precision": 0.5997,
+      "recall": 0.9564,
+      "f1_score": 0.7372,
+      "support": 390
+    },
+    "depression": {
+      "precision": 0.9973,
+      "recall": 0.9359,
+      "f1_score": 0.9656,
+      "support": 390
+    }
+  },
+  "healthy_recall_by_dataset": {
+    "alzheimer": {
+      "support": 120,
+      "correct": 10,
+      "recall": 0.0833
+    },
+    "parkinson": {
+      "support": 270,
+      "correct": 21,
+      "recall": 0.0778
+    },
+    "modma": {
+      "support": 90,
+      "correct": 88,
+      "recall": 0.9778
+    }
+  },
+  "confusion_matrix": [
+    [
+      119,
+      0,
+      111,
+      249,
+      1
+    ],
+    [
+      0,
+      57,
+      0,
+      0,
+      0
+    ],
+    [
+      17,
+      0,
+      163,
+      0,
+      0
+    ],
+    [
+      17,
+      0,
+      0,
+      373,
+      0
+    ],
+    [
+      25,
+      0,
+      0,
+      0,
+      365
+    ]
+  ],
+  "training_history": {
+    "train_loss": [
+      1.707,
+      0.9356,
+      0.3667,
+      0.2749,
+      0.2435,
+      0.2401,
+      0.2333,
+      0.2104
+    ],
+    "train_acc": [
+      0.3177,
+      0.5922,
+      0.7814,
+      0.819,
+      0.8381,
+      0.8405,
+      0.8393,
+      0.8607
+    ],
+    "val_acc": [
+      0.3146,
+      0.4242,
+      0.6673,
+      0.7141,
+      0.7194,
+      0.68,
+      0.7081,
+      0.7114
+    ],
+    "val_bal_acc": [
+      0.1962,
+      0.5733,
+      0.7567,
+      0.7946,
+      0.8092,
+      0.7878,
+      0.8011,
+      0.7934
+    ],
+    "val_macro_f1": [
+      0.0959,
+      0.4808,
+      0.6832,
+      0.743,
+      0.7565,
+      0.7227,
+      0.7498,
+      0.7541
+    ]
+  }
+}
