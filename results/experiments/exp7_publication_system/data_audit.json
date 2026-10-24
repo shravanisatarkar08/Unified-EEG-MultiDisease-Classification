@@ -1,0 +1,76 @@
+{
+  "total_windows": 10488,
+  "split_counts": {
+    "train": 7466,
+    "test": 1525,
+    "val": 1497
+  },
+  "n_subjects": {
+    "train": 201,
+    "val": 42,
+    "test": 42
+  },
+  "subject_leakage_detected": false,
+  "source_file_overlap_detected": false,
+  "class_mapping": {
+    "healthy": 0,
+    "epilepsy": 1,
+    "alzheimers": 2,
+    "parkinsons": 3,
+    "depression": 4
+  },
+  "source_confounding": {
+    "alzheimers": {
+      "alzheimer": 1080,
+      "chbmit": 0,
+      "modma": 0,
+      "parkinson": 0,
+      "srm_healthy": 0,
+      "All": 1080
+    },
+    "depression": {
+      "alzheimer": 0,
+      "chbmit": 0,
+      "modma": 1860,
+      "parkinson": 0,
+      "srm_healthy": 0,
+      "All": 1860
+    },
+    "epilepsy": {
+      "alzheimer": 0,
+      "chbmit": 438,
+      "modma": 0,
+      "parkinson": 0,
+      "srm_healthy": 0,
+      "All": 438
+    },
+    "healthy": {
+      "alzheimer": 870,
+      "chbmit": 0,
+      "modma": 1740,
+      "parkinson": 1470,
+      "srm_healthy": 30,
+      "All": 4110
+    },
+    "parkinsons": {
+      "alzheimer": 0,
+      "chbmit": 0,
+      "modma": 0,
+      "parkinson": 3000,
+      "srm_healthy": 0,
+      "All": 3000
+    },
+    "All": {
+      "alzheimer": 1950,
+      "chbmit": 438,
+      "modma": 3600,
+      "parkinson": 4470,
+      "srm_healthy": 30,
+      "All": 10488
+    }
+  },
+  "signals_harmonized": true,
+  "target_channels": 19,
+  "target_samples": 1280,
+  "sampling_rate": 256.0
+}

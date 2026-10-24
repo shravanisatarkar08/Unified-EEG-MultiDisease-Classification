@@ -1,0 +1,15 @@
+{
+  "run_name": "exp7_spectral_hybrid_balanced",
+  "representation": "spectral_hybrid",
+  "class_weights_type": "balanced",
+  "max_alpha": 0.15,
+  "domain_loss_weight": 0.1,
+  "alpha_schedule": "linear",
+  "lr": 0.0005,
+  "weight_decay": 0.01,
+  "warmup_epochs": 2,
+  "max_epochs": 8,
+  "batch_size": 64,
+  "patience": 4,
+  "seed": 42
+}

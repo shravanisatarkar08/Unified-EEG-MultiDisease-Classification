@@ -1,0 +1,5 @@
+model_name,representation,val_accuracy,val_balanced_accuracy,val_macro_f1,domain_probe_accuracy,ad_healthy_recall,pd_healthy_recall,modma_healthy_recall,checkpoint_sha256
+exp6_dann_alpha0.15,raw_waveform,0.7715,0.8449,0.8036,0.9873,0.0667,0.3889,0.9778,N/A
+canonical_baseline,raw_waveform,0.7662,0.8317,0.7996,0.986,0.0333,0.4481,0.9889,N/A
+exp7_spectral_hybrid_balanced,spectral_hybrid,0.7502,0.7728,0.7754,0.9706,0.325,0.4963,1.0,5923ccc79201eda5271b4ec5fcc7a13b1610bf7cd31ab6bab6a4f72af3592141
+exp7_spectral_hybrid_dann,spectral_hybrid,0.7408,0.792,0.7845,0.9706,0.2417,0.5556,1.0,03f1341f0ce3cb23dd63bb76c82683afbc25227d1d48ee3e1f9d9e708df8d14a

@@ -1,0 +1,178 @@
+{
+  "run_name": "exp7_spectral_hybrid_balanced",
+  "representation": "spectral_hybrid",
+  "class_weights_type": "balanced",
+  "selected_epoch": 6,
+  "runtime_seconds": 342.88,
+  "checkpoint_path": "results\\experiments\\exp7_publication_system\\exp7_spectral_hybrid_balanced\\best_model_exp7_spectral_hybrid_balanced_ep006.pt",
+  "checkpoint_sha256": "5923ccc79201eda5271b4ec5fcc7a13b1610bf7cd31ab6bab6a4f72af3592141",
+  "val_accuracy": 0.7502,
+  "val_balanced_accuracy": 0.7728,
+  "val_macro_f1": 0.7754,
+  "val_weighted_f1": 0.7501,
+  "val_domain_probe_accuracy": 0.9706,
+  "bootstrap_ci_95": {
+    "n_subjects_sampled": 42,
+    "n_resamples": 1000,
+    "accuracy_ci_95": [
+      0.651,
+      0.8457
+    ],
+    "balanced_accuracy_ci_95": [
+      0.6708,
+      0.8512
+    ],
+    "macro_f1_ci_95": [
+      0.5187,
+      0.8382
+    ]
+  },
+  "per_class": {
+    "healthy": {
+      "precision": 0.6368,
+      "recall": 0.5479,
+      "f1_score": 0.589,
+      "support": 480
+    },
+    "epilepsy": {
+      "precision": 1.0,
+      "recall": 0.8596,
+      "f1_score": 0.9245,
+      "support": 57
+    },
+    "alzheimers": {
+      "precision": 0.5888,
+      "recall": 0.7,
+      "f1_score": 0.6396,
+      "support": 180
+    },
+    "parkinsons": {
+      "precision": 0.7075,
+      "recall": 0.8436,
+      "f1_score": 0.7696,
+      "support": 390
+    },
+    "depression": {
+      "precision": 1.0,
+      "recall": 0.9128,
+      "f1_score": 0.9544,
+      "support": 390
+    }
+  },
+  "healthy_recall_by_dataset": {
+    "alzheimer": {
+      "support": 120,
+      "correct": 39,
+      "recall": 0.325
+    },
+    "parkinson": {
+      "support": 270,
+      "correct": 134,
+      "recall": 0.4963
+    },
+    "modma": {
+      "support": 90,
+      "correct": 90,
+      "recall": 1.0
+    }
+  },
+  "confusion_matrix": [
+    [
+      263,
+      0,
+      81,
+      136,
+      0
+    ],
+    [
+      1,
+      49,
+      7,
+      0,
+      0
+    ],
+    [
+      54,
+      0,
+      126,
+      0,
+      0
+    ],
+    [
+      61,
+      0,
+      0,
+      329,
+      0
+    ],
+    [
+      34,
+      0,
+      0,
+      0,
+      356
+    ]
+  ],
+  "training_history": {
+    "train_loss": [
+      1.5412,
+      1.0121,
+      0.509,
+      0.4252,
+      0.3836,
+      0.3456,
+      0.3177,
+      0.3117
+    ],
+    "train_acc": [
+      0.3136,
+      0.5639,
+      0.7473,
+      0.7886,
+      0.818,
+      0.8365,
+      0.8508,
+      0.8513
+    ],
+    "val_loss": [
+      1.5415,
+      0.6418,
+      0.516,
+      0.4917,
+      0.5921,
+      0.5567,
+      0.6161,
+      0.6732
+    ],
+    "val_acc": [
+      0.3133,
+      0.676,
+      0.7061,
+      0.7248,
+      0.7255,
+      0.7502,
+      0.7368,
+      0.7194
+    ],
+    "val_bal_acc": [
+      0.1954,
+      0.7876,
+      0.7592,
+      0.7826,
+      0.7613,
+      0.7728,
+      0.733,
+      0.6953
+    ],
+    "val_macro_f1": [
+      0.0956,
+      0.7021,
+      0.7398,
+      0.7699,
+      0.7541,
+      0.7754,
+      0.7478,
+      0.72
+    ]
+  }
+}
