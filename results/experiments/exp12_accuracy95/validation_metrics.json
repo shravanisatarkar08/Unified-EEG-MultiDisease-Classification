@@ -1,0 +1,835 @@
+{
+  "canonical_baseline": {
+    "accuracy": 0.7662,
+    "balanced_accuracy": 0.8317,
+    "macro_f1": 0.7996,
+    "weighted_f1": 0.7587,
+    "per_class": {
+      "healthy": {
+        "precision": 0.705,
+        "recall": 0.4729,
+        "f1_score": 0.5661,
+        "support": 480
+      },
+      "epilepsy": {
+        "precision": 0.9661,
+        "recall": 1.0,
+        "f1_score": 0.9828,
+        "support": 57
+      },
+      "alzheimers": {
+        "precision": 0.583,
+        "recall": 0.8778,
+        "f1_score": 0.7007,
+        "support": 180
+      },
+      "parkinsons": {
+        "precision": 0.7125,
+        "recall": 0.8897,
+        "f1_score": 0.7913,
+        "support": 390
+      },
+      "depression": {
+        "precision": 1.0,
+        "recall": 0.9179,
+        "f1_score": 0.9572,
+        "support": 390
+      }
+    },
+    "healthy_recall_by_dataset": {
+      "alzheimer": {
+        "support": 120,
+        "correct": 7,
+        "recall": 0.0583
+      },
+      "parkinson": {
+        "support": 270,
+        "correct": 130,
+        "recall": 0.4815
+      },
+      "modma": {
+        "support": 90,
+        "correct": 90,
+        "recall": 1.0
+      }
+    },
+    "confusion_matrix": [
+      [
+        227,
+        0,
+        113,
+        140,
+        0
+      ],
+      [
+        0,
+        57,
+        0,
+        0,
+        0
+      ],
+      [
+        22,
+        0,
+        158,
+        0,
+        0
+      ],
+      [
+        41,
+        2,
+        0,
+        347,
+        0
+      ],
+      [
+        32,
+        0,
+        0,
+        0,
+        358
+      ]
+    ]
+  },
+  "exp6_dann_alpha0.15": {
+    "accuracy": 0.7715,
+    "balanced_accuracy": 0.8449,
+    "macro_f1": 0.8036,
+    "weighted_f1": 0.7569,
+    "per_class": {
+      "healthy": {
+        "precision": 0.7672,
+        "recall": 0.4188,
+        "f1_score": 0.5418,
+        "support": 480
+      },
+      "epilepsy": {
+        "precision": 0.9825,
+        "recall": 0.9825,
+        "f1_score": 0.9825,
+        "support": 57
+      },
+      "alzheimers": {
+        "precision": 0.6,
+        "recall": 0.9667,
+        "f1_score": 0.7404,
+        "support": 180
+      },
+      "parkinsons": {
+        "precision": 0.6888,
+        "recall": 0.9308,
+        "f1_score": 0.7917,
+        "support": 390
+      },
+      "depression": {
+        "precision": 1.0,
+        "recall": 0.9256,
+        "f1_score": 0.9614,
+        "support": 390
+      }
+    },
+    "healthy_recall_by_dataset": {
+      "alzheimer": {
+        "support": 120,
+        "correct": 8,
+        "recall": 0.0667
+      },
+      "parkinson": {
+        "support": 270,
+        "correct": 105,
+        "recall": 0.3889
+      },
+      "modma": {
+        "support": 90,
+        "correct": 88,
+        "recall": 0.9778
+      }
+    },
+    "confusion_matrix": [
+      [
+        201,
+        1,
+        114,
+        164,
+        0
+      ],
+      [
+        0,
+        56,
+        1,
+        0,
+        0
+      ],
+      [
+        6,
+        0,
+        174,
+        0,
+        0
+      ],
+      [
+        26,
+        0,
+        1,
+        363,
+        0
+      ],
+      [
+        29,
+        0,
+        0,
+        0,
+        361
+      ]
+    ]
+  },
+  "exp7_spectral_hybrid": {
+    "accuracy": 0.7502,
+    "balanced_accuracy": 0.7728,
+    "macro_f1": 0.7754,
+    "weighted_f1": 0.7501,
+    "per_class": {
+      "healthy": {
+        "precision": 0.6368,
+        "recall": 0.5479,
+        "f1_score": 0.589,
+        "support": 480
+      },
+      "epilepsy": {
+        "precision": 1.0,
+        "recall": 0.8596,
+        "f1_score": 0.9245,
+        "support": 57
+      },
+      "alzheimers": {
+        "precision": 0.5888,
+        "recall": 0.7,
+        "f1_score": 0.6396,
+        "support": 180
+      },
+      "parkinsons": {
+        "precision": 0.7075,
+        "recall": 0.8436,
+        "f1_score": 0.7696,
+        "support": 390
+      },
+      "depression": {
+        "precision": 1.0,
+        "recall": 0.9128,
+        "f1_score": 0.9544,
+        "support": 390
+      }
+    },
+    "healthy_recall_by_dataset": {
+      "alzheimer": {
+        "support": 120,
+        "correct": 39,
+        "recall": 0.325
+      },
+      "parkinson": {
+        "support": 270,
+        "correct": 134,
+        "recall": 0.4963
+      },
+      "modma": {
+        "support": 90,
+        "correct": 90,
+        "recall": 1.0
+      }
+    },
+    "confusion_matrix": [
+      [
+        263,
+        0,
+        81,
+        136,
+        0
+      ],
+      [
+        1,
+        49,
+        7,
+        0,
+        0
+      ],
+      [
+        54,
+        0,
+        126,
+        0,
+        0
+      ],
+      [
+        61,
+        0,
+        0,
+        329,
+        0
+      ],
+      [
+        34,
+        0,
+        0,
+        0,
+        356
+      ]
+    ]
+  },
+  "exp9_ensemble": {
+    "accuracy": 0.7722,
+    "balanced_accuracy": 0.8351,
+    "macro_f1": 0.8055,
+    "weighted_f1": 0.7625,
+    "per_class": {
+      "healthy": {
+        "precision": 0.7367,
+        "recall": 0.4604,
+        "f1_score": 0.5667,
+        "support": 480
+      },
+      "epilepsy": {
+        "precision": 1.0,
+        "recall": 0.9649,
+        "f1_score": 0.9821,
+        "support": 57
+      },
+      "alzheimers": {
+        "precision": 0.6066,
+        "recall": 0.9167,
+        "f1_score": 0.7301,
+        "support": 180
+      },
+      "parkinsons": {
+        "precision": 0.6967,
+        "recall": 0.9128,
+        "f1_score": 0.7902,
+        "support": 390
+      },
+      "depression": {
+        "precision": 1.0,
+        "recall": 0.9205,
+        "f1_score": 0.9586,
+        "support": 390
+      }
+    },
+    "healthy_recall_by_dataset": {
+      "alzheimer": {
+        "support": 120,
+        "correct": 16,
+        "recall": 0.1333
+      },
+      "parkinson": {
+        "support": 270,
+        "correct": 115,
+        "recall": 0.4259
+      },
+      "modma": {
+        "support": 90,
+        "correct": 90,
+        "recall": 1.0
+      }
+    },
+    "confusion_matrix": [
+      [
+        221,
+        0,
+        104,
+        155,
+        0
+      ],
+      [
+        0,
+        55,
+        2,
+        0,
+        0
+      ],
+      [
+        15,
+        0,
+        165,
+        0,
+        0
+      ],
+      [
+        33,
+        0,
+        1,
+        356,
+        0
+      ],
+      [
+        31,
+        0,
+        0,
+        0,
+        359
+      ]
+    ]
+  },
+  "exp12_tri_model_ensemble": {
+    "accuracy": 0.7742,
+    "balanced_accuracy": 0.8372,
+    "macro_f1": 0.8085,
+    "weighted_f1": 0.7656,
+    "per_class": {
+      "healthy": {
+        "precision": 0.7299,
+        "recall": 0.4729,
+        "f1_score": 0.574,
+        "support": 480
+      },
+      "epilepsy": {
+        "precision": 1.0,
+        "recall": 0.9825,
+        "f1_score": 0.9912,
+        "support": 57
+      },
+      "alzheimers": {
+        "precision": 0.6067,
+        "recall": 0.9,
+        "f1_score": 0.7248,
+        "support": 180
+      },
+      "parkinsons": {
+        "precision": 0.705,
+        "recall": 0.9128,
+        "f1_score": 0.7955,
+        "support": 390
+      },
+      "depression": {
+        "precision": 1.0,
+        "recall": 0.9179,
+        "f1_score": 0.9572,
+        "support": 390
+      }
+    },
+    "healthy_recall_by_dataset": {
+      "alzheimer": {
+        "support": 120,
+        "correct": 16,
+        "recall": 0.1333
+      },
+      "parkinson": {
+        "support": 270,
+        "correct": 121,
+        "recall": 0.4481
+      },
+      "modma": {
+        "support": 90,
+        "correct": 90,
+        "recall": 1.0
+      }
+    },
+    "confusion_matrix": [
+      [
+        227,
+        0,
+        104,
+        149,
+        0
+      ],
+      [
+        0,
+        56,
+        1,
+        0,
+        0
+      ],
+      [
+        18,
+        0,
+        162,
+        0,
+        0
+      ],
+      [
+        34,
+        0,
+        0,
+        356,
+        0
+      ],
+      [
+        32,
+        0,
+        0,
+        0,
+        358
+      ]
+    ],
+    "bootstrap_ci_95": {
+      "n_subjects_sampled": 40,
+      "n_resamples": 1000,
+      "accuracy_ci_95": [
+        0.6772,
+        0.8701
+      ],
+      "balanced_accuracy_ci_95": [
+        0.746,
+        0.8866
+      ],
+      "macro_f1_ci_95": [
+        0.678,
+        0.8773
+      ]
+    },
+    "weights": {
+      "canonical": 0.2,
+      "exp6_dann": 0.5,
+      "exp7_spectral_hybrid": 0.3
+    }
+  },
+  "grid_search_summary": [
+    {
+      "w_canon": 0.05,
+      "w_exp6": 0.4,
+      "w_exp7": 0.55,
+      "accuracy": 0.7649,
+      "balanced_accuracy": 0.816
+    },
+    {
+      "w_canon": 0.05,
+      "w_exp6": 0.45,
+      "w_exp7": 0.5,
+      "accuracy": 0.7675,
+      "balanced_accuracy": 0.8218
+    },
+    {
+      "w_canon": 0.05,
+      "w_exp6": 0.5,
+      "w_exp7": 0.45,
+      "accuracy": 0.7722,
+      "balanced_accuracy": 0.8277
+    },
+    {
+      "w_canon": 0.05,
+      "w_exp6": 0.55,
+      "w_exp7": 0.4,
+      "accuracy": 0.7709,
+      "balanced_accuracy": 0.8283
+    },
+    {
+      "w_canon": 0.05,
+      "w_exp6": 0.6,
+      "w_exp7": 0.35,
+      "accuracy": 0.7702,
+      "balanced_accuracy": 0.8307
+    },
+    {
+      "w_canon": 0.05,
+      "w_exp6": 0.65,
+      "w_exp7": 0.3,
+      "accuracy": 0.7715,
+      "balanced_accuracy": 0.8333
+    },
+    {
+      "w_canon": 0.05,
+      "w_exp6": 0.7,
+      "w_exp7": 0.25,
+      "accuracy": 0.7715,
+      "balanced_accuracy": 0.836
+    },
+    {
+      "w_canon": 0.05,
+      "w_exp6": 0.75,
+      "w_exp7": 0.2,
+      "accuracy": 0.7715,
+      "balanced_accuracy": 0.8394
+    },
+    {
+      "w_canon": 0.1,
+      "w_exp6": 0.4,
+      "w_exp7": 0.5,
+      "accuracy": 0.7695,
+      "balanced_accuracy": 0.8219
+    },
+    {
+      "w_canon": 0.1,
+      "w_exp6": 0.45,
+      "w_exp7": 0.45,
+      "accuracy": 0.7715,
+      "balanced_accuracy": 0.8265
+    },
+    {
+      "w_canon": 0.1,
+      "w_exp6": 0.5,
+      "w_exp7": 0.4,
+      "accuracy": 0.7722,
+      "balanced_accuracy": 0.8298
+    },
+    {
+      "w_canon": 0.1,
+      "w_exp6": 0.55,
+      "w_exp7": 0.35,
+      "accuracy": 0.7682,
+      "balanced_accuracy": 0.828
+    },
+    {
+      "w_canon": 0.1,
+      "w_exp6": 0.6,
+      "w_exp7": 0.3,
+      "accuracy": 0.7709,
+      "balanced_accuracy": 0.8315
+    },
+    {
+      "w_canon": 0.1,
+      "w_exp6": 0.65,
+      "w_exp7": 0.25,
+      "accuracy": 0.7722,
+      "balanced_accuracy": 0.8381
+    },
+    {
+      "w_canon": 0.1,
+      "w_exp6": 0.7,
+      "w_exp7": 0.2,
+      "accuracy": 0.7709,
+      "balanced_accuracy": 0.8388
+    },
+    {
+      "w_canon": 0.1,
+      "w_exp6": 0.75,
+      "w_exp7": 0.15,
+      "accuracy": 0.7695,
+      "balanced_accuracy": 0.8396
+    },
+    {
+      "w_canon": 0.15,
+      "w_exp6": 0.4,
+      "w_exp7": 0.45,
+      "accuracy": 0.7702,
+      "balanced_accuracy": 0.8243
+    },
+    {
+      "w_canon": 0.15,
+      "w_exp6": 0.45,
+      "w_exp7": 0.4,
+      "accuracy": 0.7722,
+      "balanced_accuracy": 0.8284
+    },
+    {
+      "w_canon": 0.15,
+      "w_exp6": 0.5,
+      "w_exp7": 0.35,
+      "accuracy": 0.7722,
+      "balanced_accuracy": 0.8312
+    },
+    {
+      "w_canon": 0.15,
+      "w_exp6": 0.55,
+      "w_exp7": 0.3,
+      "accuracy": 0.7722,
+      "balanced_accuracy": 0.8353
+    },
+    {
+      "w_canon": 0.15,
+      "w_exp6": 0.6,
+      "w_exp7": 0.25,
+      "accuracy": 0.7709,
+      "balanced_accuracy": 0.8353
+    },
+    {
+      "w_canon": 0.15,
+      "w_exp6": 0.65,
+      "w_exp7": 0.2,
+      "accuracy": 0.7702,
+      "balanced_accuracy": 0.8389
+    },
+    {
+      "w_canon": 0.15,
+      "w_exp6": 0.7,
+      "w_exp7": 0.15,
+      "accuracy": 0.7709,
+      "balanced_accuracy": 0.8403
+    },
+    {
+      "w_canon": 0.15,
+      "w_exp6": 0.75,
+      "w_exp7": 0.1,
+      "accuracy": 0.7715,
+      "balanced_accuracy": 0.8424
+    },
+    {
+      "w_canon": 0.2,
+      "w_exp6": 0.4,
+      "w_exp7": 0.4,
+      "accuracy": 0.7729,
+      "balanced_accuracy": 0.8312
+    },
+    {
+      "w_canon": 0.2,
+      "w_exp6": 0.45,
+      "w_exp7": 0.35,
+      "accuracy": 0.7722,
+      "balanced_accuracy": 0.8323
+    },
+    {
+      "w_canon": 0.2,
+      "w_exp6": 0.5,
+      "w_exp7": 0.3,
+      "accuracy": 0.7742,
+      "balanced_accuracy": 0.8372
+    },
+    {
+      "w_canon": 0.2,
+      "w_exp6": 0.55,
+      "w_exp7": 0.25,
+      "accuracy": 0.7715,
+      "balanced_accuracy": 0.8357
+    },
+    {
+      "w_canon": 0.2,
+      "w_exp6": 0.6,
+      "w_exp7": 0.2,
+      "accuracy": 0.7722,
+      "balanced_accuracy": 0.8389
+    },
+    {
+      "w_canon": 0.2,
+      "w_exp6": 0.65,
+      "w_exp7": 0.15,
+      "accuracy": 0.7702,
+      "balanced_accuracy": 0.8397
+    },
+    {
+      "w_canon": 0.2,
+      "w_exp6": 0.7,
+      "w_exp7": 0.1,
+      "accuracy": 0.7689,
+      "balanced_accuracy": 0.8392
+    },
+    {
+      "w_canon": 0.2,
+      "w_exp6": 0.75,
+      "w_exp7": 0.05,
+      "accuracy": 0.7702,
+      "balanced_accuracy": 0.8422
+    },
+    {
+      "w_canon": 0.25,
+      "w_exp6": 0.4,
+      "w_exp7": 0.35,
+      "accuracy": 0.7722,
+      "balanced_accuracy": 0.8302
+    },
+    {
+      "w_canon": 0.25,
+      "w_exp6": 0.45,
+      "w_exp7": 0.3,
+      "accuracy": 0.7729,
+      "balanced_accuracy": 0.835
+    },
+    {
+      "w_canon": 0.25,
+      "w_exp6": 0.5,
+      "w_exp7": 0.25,
+      "accuracy": 0.7735,
+      "balanced_accuracy": 0.8376
+    },
+    {
+      "w_canon": 0.25,
+      "w_exp6": 0.55,
+      "w_exp7": 0.2,
+      "accuracy": 0.7709,
+      "balanced_accuracy": 0.8379
+    },
+    {
+      "w_canon": 0.25,
+      "w_exp6": 0.6,
+      "w_exp7": 0.15,
+      "accuracy": 0.7715,
+      "balanced_accuracy": 0.8399
+    },
+    {
+      "w_canon": 0.25,
+      "w_exp6": 0.65,
+      "w_exp7": 0.1,
+      "accuracy": 0.7709,
+      "balanced_accuracy": 0.8403
+    },
+    {
+      "w_canon": 0.25,
+      "w_exp6": 0.7,
+      "w_exp7": 0.05,
+      "accuracy": 0.7695,
+      "balanced_accuracy": 0.8409
+    },
+    {
+      "w_canon": 0.3,
+      "w_exp6": 0.4,
+      "w_exp7": 0.3,
+      "accuracy": 0.7709,
+      "balanced_accuracy": 0.8322
+    },
+    {
+      "w_canon": 0.3,
+      "w_exp6": 0.45,
+      "w_exp7": 0.25,
+      "accuracy": 0.7709,
+      "balanced_accuracy": 0.8344
+    },
+    {
+      "w_canon": 0.3,
+      "w_exp6": 0.5,
+      "w_exp7": 0.2,
+      "accuracy": 0.7709,
+      "balanced_accuracy": 0.8365
+    },
+    {
+      "w_canon": 0.3,
+      "w_exp6": 0.55,
+      "w_exp7": 0.15,
+      "accuracy": 0.7715,
+      "balanced_accuracy": 0.8399
+    },
+    {
+      "w_canon": 0.3,
+      "w_exp6": 0.6,
+      "w_exp7": 0.1,
+      "accuracy": 0.7709,
+      "balanced_accuracy": 0.8402
+    },
+    {
+      "w_canon": 0.3,
+      "w_exp6": 0.65,
+      "w_exp7": 0.05,
+      "accuracy": 0.7695,
+      "balanced_accuracy": 0.8402
+    },
+    {
+      "w_canon": 0.35,
+      "w_exp6": 0.4,
+      "w_exp7": 0.25,
+      "accuracy": 0.7695,
+      "balanced_accuracy": 0.8321
+    },
+    {
+      "w_canon": 0.35,
+      "w_exp6": 0.45,
+      "w_exp7": 0.2,
+      "accuracy": 0.7709,
+      "balanced_accuracy": 0.8358
+    },
+    {
+      "w_canon": 0.35,
+      "w_exp6": 0.5,
+      "w_exp7": 0.15,
+      "accuracy": 0.7702,
+      "balanced_accuracy": 0.8362
+    },
+    {
+      "w_canon": 0.35,
+      "w_exp6": 0.55,
+      "w_exp7": 0.1,
+      "accuracy": 0.7715,
+      "balanced_accuracy": 0.8399
+    },
+    {
+      "w_canon": 0.35,
+      "w_exp6": 0.6,
+      "w_exp7": 0.05,
+      "accuracy": 0.7682,
+      "balanced_accuracy": 0.8384
+    }
+  ]
+}
