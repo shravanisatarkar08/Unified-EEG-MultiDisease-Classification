@@ -1,0 +1,793 @@
+{
+  "reference_exp6": {
+    "val_accuracy": 0.7715,
+    "val_balanced_accuracy": 0.8449,
+    "val_macro_f1": 0.8036
+  },
+  "reference_exp9_ensemble": {
+    "val_accuracy": 0.7722,
+    "val_balanced_accuracy": 0.8351,
+    "val_macro_f1": 0.8055
+  },
+  "models": {
+    "logreg_exp6_cls": {
+      "accuracy": 0.7341,
+      "balanced_accuracy": 0.7529,
+      "macro_f1": 0.7659,
+      "weighted_f1": 0.7393,
+      "per_class": {
+        "healthy": {
+          "precision": 0.5827,
+          "recall": 0.6604,
+          "f1_score": 0.6191,
+          "support": 480
+        },
+        "epilepsy": {
+          "precision": 1.0,
+          "recall": 0.9474,
+          "f1_score": 0.973,
+          "support": 57
+        },
+        "alzheimers": {
+          "precision": 0.5915,
+          "recall": 0.5389,
+          "f1_score": 0.564,
+          "support": 180
+        },
+        "parkinsons": {
+          "precision": 0.7387,
+          "recall": 0.7538,
+          "f1_score": 0.7462,
+          "support": 390
+        },
+        "depression": {
+          "precision": 1.0,
+          "recall": 0.8641,
+          "f1_score": 0.9271,
+          "support": 390
+        }
+      },
+      "healthy_recall_by_dataset": {
+        "alzheimer": {
+          "support": 120,
+          "correct": 62,
+          "recall": 0.5167
+        },
+        "parkinson": {
+          "support": 270,
+          "correct": 165,
+          "recall": 0.6111
+        },
+        "modma": {
+          "support": 90,
+          "correct": 90,
+          "recall": 1.0
+        }
+      },
+      "confusion_matrix": [
+        [
+          317,
+          0,
+          59,
+          104,
+          0
+        ],
+        [
+          0,
+          54,
+          3,
+          0,
+          0
+        ],
+        [
+          83,
+          0,
+          97,
+          0,
+          0
+        ],
+        [
+          91,
+          0,
+          5,
+          294,
+          0
+        ],
+        [
+          53,
+          0,
+          0,
+          0,
+          337
+        ]
+      ],
+      "best_c": 10.0,
+      "train_cv_accuracy": 0.8539,
+      "cv_scores": {
+        "0.001": 0.8403,
+        "0.01": 0.8449,
+        "0.1": 0.8485,
+        "1.0": 0.8528,
+        "10.0": 0.8539
+      },
+      "feature_dim": 64
+    },
+    "logreg_balanced_exp6_cls": {
+      "accuracy": 0.7575,
+      "balanced_accuracy": 0.8187,
+      "macro_f1": 0.7965,
+      "weighted_f1": 0.7553,
+      "per_class": {
+        "healthy": {
+          "precision": 0.6712,
+          "recall": 0.5188,
+          "f1_score": 0.5852,
+          "support": 480
+        },
+        "epilepsy": {
+          "precision": 1.0,
+          "recall": 0.9474,
+          "f1_score": 0.973,
+          "support": 57
+        },
+        "alzheimers": {
+          "precision": 0.5907,
+          "recall": 0.9222,
+          "f1_score": 0.7202,
+          "support": 180
+        },
+        "parkinsons": {
+          "precision": 0.7169,
+          "recall": 0.8179,
+          "f1_score": 0.7641,
+          "support": 390
+        },
+        "depression": {
+          "precision": 1.0,
+          "recall": 0.8872,
+          "f1_score": 0.9402,
+          "support": 390
+        }
+      },
+      "healthy_recall_by_dataset": {
+        "alzheimer": {
+          "support": 120,
+          "correct": 18,
+          "recall": 0.15
+        },
+        "parkinson": {
+          "support": 270,
+          "correct": 142,
+          "recall": 0.5259
+        },
+        "modma": {
+          "support": 90,
+          "correct": 89,
+          "recall": 0.9889
+        }
+      },
+      "confusion_matrix": [
+        [
+          249,
+          0,
+          105,
+          126,
+          0
+        ],
+        [
+          0,
+          54,
+          3,
+          0,
+          0
+        ],
+        [
+          14,
+          0,
+          166,
+          0,
+          0
+        ],
+        [
+          64,
+          0,
+          7,
+          319,
+          0
+        ],
+        [
+          44,
+          0,
+          0,
+          0,
+          346
+        ]
+      ],
+      "best_c": 10.0,
+      "class_weight": "balanced",
+      "feature_dim": 64
+    },
+    "logreg_exp7_cls": {
+      "accuracy": 0.7422,
+      "balanced_accuracy": 0.7291,
+      "macro_f1": 0.7533,
+      "weighted_f1": 0.7467,
+      "per_class": {
+        "healthy": {
+          "precision": 0.6112,
+          "recall": 0.6354,
+          "f1_score": 0.6231,
+          "support": 480
+        },
+        "epilepsy": {
+          "precision": 1.0,
+          "recall": 0.6842,
+          "f1_score": 0.8125,
+          "support": 57
+        },
+        "alzheimers": {
+          "precision": 0.6349,
+          "recall": 0.6667,
+          "f1_score": 0.6504,
+          "support": 180
+        },
+        "parkinsons": {
+          "precision": 0.7166,
+          "recall": 0.7974,
+          "f1_score": 0.7549,
+          "support": 390
+        },
+        "depression": {
+          "precision": 1.0,
+          "recall": 0.8615,
+          "f1_score": 0.9256,
+          "support": 390
+        }
+      },
+      "healthy_recall_by_dataset": {
+        "alzheimer": {
+          "support": 120,
+          "correct": 69,
+          "recall": 0.575
+        },
+        "parkinson": {
+          "support": 270,
+          "correct": 147,
+          "recall": 0.5444
+        },
+        "modma": {
+          "support": 90,
+          "correct": 89,
+          "recall": 0.9889
+        }
+      },
+      "confusion_matrix": [
+        [
+          305,
+          0,
+          52,
+          123,
+          0
+        ],
+        [
+          1,
+          39,
+          17,
+          0,
+          0
+        ],
+        [
+          60,
+          0,
+          120,
+          0,
+          0
+        ],
+        [
+          79,
+          0,
+          0,
+          311,
+          0
+        ],
+        [
+          54,
+          0,
+          0,
+          0,
+          336
+        ]
+      ],
+      "best_c": 10.0,
+      "train_cv_accuracy": 0.8845,
+      "cv_scores": {
+        "0.001": 0.8677,
+        "0.01": 0.8713,
+        "0.1": 0.8776,
+        "1.0": 0.8799,
+        "10.0": 0.8845
+      },
+      "feature_dim": 64
+    },
+    "logreg_balanced_exp7_cls": {
+      "accuracy": 0.7589,
+      "balanced_accuracy": 0.7719,
+      "macro_f1": 0.7706,
+      "weighted_f1": 0.7577,
+      "per_class": {
+        "healthy": {
+          "precision": 0.6933,
+          "recall": 0.5417,
+          "f1_score": 0.6082,
+          "support": 480
+        },
+        "epilepsy": {
+          "precision": 1.0,
+          "recall": 0.7018,
+          "f1_score": 0.8247,
+          "support": 57
+        },
+        "alzheimers": {
+          "precision": 0.5918,
+          "recall": 0.8778,
+          "f1_score": 0.7069,
+          "support": 180
+        },
+        "parkinsons": {
+          "precision": 0.706,
+          "recall": 0.8436,
+          "f1_score": 0.7687,
+          "support": 390
+        },
+        "depression": {
+          "precision": 1.0,
+          "recall": 0.8949,
+          "f1_score": 0.9445,
+          "support": 390
+        }
+      },
+      "healthy_recall_by_dataset": {
+        "alzheimer": {
+          "support": 120,
+          "correct": 38,
+          "recall": 0.3167
+        },
+        "parkinson": {
+          "support": 270,
+          "correct": 133,
+          "recall": 0.4926
+        },
+        "modma": {
+          "support": 90,
+          "correct": 89,
+          "recall": 0.9889
+        }
+      },
+      "confusion_matrix": [
+        [
+          260,
+          0,
+          83,
+          137,
+          0
+        ],
+        [
+          0,
+          40,
+          17,
+          0,
+          0
+        ],
+        [
+          22,
+          0,
+          158,
+          0,
+          0
+        ],
+        [
+          61,
+          0,
+          0,
+          329,
+          0
+        ],
+        [
+          32,
+          0,
+          9,
+          0,
+          349
+        ]
+      ],
+      "best_c": 10.0,
+      "class_weight": "balanced",
+      "feature_dim": 64
+    },
+    "logreg_concat_exp6_exp7": {
+      "accuracy": 0.7422,
+      "balanced_accuracy": 0.7631,
+      "macro_f1": 0.7758,
+      "weighted_f1": 0.7462,
+      "per_class": {
+        "healthy": {
+          "precision": 0.5953,
+          "recall": 0.6375,
+          "f1_score": 0.6157,
+          "support": 480
+        },
+        "epilepsy": {
+          "precision": 1.0,
+          "recall": 0.9298,
+          "f1_score": 0.9636,
+          "support": 57
+        },
+        "alzheimers": {
+          "precision": 0.6485,
+          "recall": 0.5944,
+          "f1_score": 0.6203,
+          "support": 180
+        },
+        "parkinsons": {
+          "precision": 0.7167,
+          "recall": 0.7718,
+          "f1_score": 0.7432,
+          "support": 390
+        },
+        "depression": {
+          "precision": 0.9971,
+          "recall": 0.8821,
+          "f1_score": 0.9361,
+          "support": 390
+        }
+      },
+      "healthy_recall_by_dataset": {
+        "alzheimer": {
+          "support": 120,
+          "correct": 65,
+          "recall": 0.5417
+        },
+        "parkinson": {
+          "support": 270,
+          "correct": 151,
+          "recall": 0.5593
+        },
+        "modma": {
+          "support": 90,
+          "correct": 90,
+          "recall": 1.0
+        }
+      },
+      "confusion_matrix": [
+        [
+          306,
+          0,
+          55,
+          119,
+          0
+        ],
+        [
+          0,
+          53,
+          3,
+          0,
+          1
+        ],
+        [
+          73,
+          0,
+          107,
+          0,
+          0
+        ],
+        [
+          89,
+          0,
+          0,
+          301,
+          0
+        ],
+        [
+          46,
+          0,
+          0,
+          0,
+          344
+        ]
+      ],
+      "best_c": 10.0,
+      "train_cv_accuracy": 0.8912,
+      "cv_scores": {
+        "0.001": 0.8677,
+        "0.01": 0.8778,
+        "0.1": 0.8807,
+        "1.0": 0.8882,
+        "10.0": 0.8912
+      },
+      "feature_dim": 128
+    },
+    "logreg_balanced_concat_exp6_exp7": {
+      "accuracy": 0.7609,
+      "balanced_accuracy": 0.8077,
+      "macro_f1": 0.7986,
+      "weighted_f1": 0.7603,
+      "per_class": {
+        "healthy": {
+          "precision": 0.6584,
+          "recall": 0.5542,
+          "f1_score": 0.6018,
+          "support": 480
+        },
+        "epilepsy": {
+          "precision": 1.0,
+          "recall": 0.9298,
+          "f1_score": 0.9636,
+          "support": 57
+        },
+        "alzheimers": {
+          "precision": 0.6398,
+          "recall": 0.8389,
+          "f1_score": 0.726,
+          "support": 180
+        },
+        "parkinsons": {
+          "precision": 0.702,
+          "recall": 0.8154,
+          "f1_score": 0.7544,
+          "support": 390
+        },
+        "depression": {
+          "precision": 1.0,
+          "recall": 0.9,
+          "f1_score": 0.9474,
+          "support": 390
+        }
+      },
+      "healthy_recall_by_dataset": {
+        "alzheimer": {
+          "support": 120,
+          "correct": 42,
+          "recall": 0.35
+        },
+        "parkinson": {
+          "support": 270,
+          "correct": 135,
+          "recall": 0.5
+        },
+        "modma": {
+          "support": 90,
+          "correct": 89,
+          "recall": 0.9889
+        }
+      },
+      "confusion_matrix": [
+        [
+          266,
+          0,
+          79,
+          135,
+          0
+        ],
+        [
+          0,
+          53,
+          4,
+          0,
+          0
+        ],
+        [
+          29,
+          0,
+          151,
+          0,
+          0
+        ],
+        [
+          72,
+          0,
+          0,
+          318,
+          0
+        ],
+        [
+          37,
+          0,
+          2,
+          0,
+          351
+        ]
+      ],
+      "best_c": 10.0,
+      "class_weight": "balanced",
+      "feature_dim": 128
+    },
+    "ridge_exp6_cls": {
+      "accuracy": 0.7528,
+      "balanced_accuracy": 0.7767,
+      "macro_f1": 0.7815,
+      "weighted_f1": 0.7546,
+      "per_class": {
+        "healthy": {
+          "precision": 0.6189,
+          "recall": 0.6125,
+          "f1_score": 0.6157,
+          "support": 480
+        },
+        "epilepsy": {
+          "precision": 1.0,
+          "recall": 0.9649,
+          "f1_score": 0.9821,
+          "support": 57
+        },
+        "alzheimers": {
+          "precision": 0.5909,
+          "recall": 0.5778,
+          "f1_score": 0.5843,
+          "support": 180
+        },
+        "parkinsons": {
+          "precision": 0.7329,
+          "recall": 0.8231,
+          "f1_score": 0.7754,
+          "support": 390
+        },
+        "depression": {
+          "precision": 1.0,
+          "recall": 0.9051,
+          "f1_score": 0.9502,
+          "support": 390
+        }
+      },
+      "healthy_recall_by_dataset": {
+        "alzheimer": {
+          "support": 120,
+          "correct": 51,
+          "recall": 0.425
+        },
+        "parkinson": {
+          "support": 270,
+          "correct": 153,
+          "recall": 0.5667
+        },
+        "modma": {
+          "support": 90,
+          "correct": 90,
+          "recall": 1.0
+        }
+      },
+      "confusion_matrix": [
+        [
+          294,
+          0,
+          69,
+          117,
+          0
+        ],
+        [
+          1,
+          55,
+          1,
+          0,
+          0
+        ],
+        [
+          76,
+          0,
+          104,
+          0,
+          0
+        ],
+        [
+          67,
+          0,
+          2,
+          321,
+          0
+        ],
+        [
+          37,
+          0,
+          0,
+          0,
+          353
+        ]
+      ],
+      "best_alpha": 10.0,
+      "feature_dim": 64
+    },
+    "ridge_concat_exp6_exp7": {
+      "accuracy": 0.7401,
+      "balanced_accuracy": 0.7635,
+      "macro_f1": 0.769,
+      "weighted_f1": 0.7406,
+      "per_class": {
+        "healthy": {
+          "precision": 0.6082,
+          "recall": 0.5563,
+          "f1_score": 0.5811,
+          "support": 480
+        },
+        "epilepsy": {
+          "precision": 1.0,
+          "recall": 0.9123,
+          "f1_score": 0.9541,
+          "support": 57
+        },
+        "alzheimers": {
+          "precision": 0.5892,
+          "recall": 0.6056,
+          "f1_score": 0.5973,
+          "support": 180
+        },
+        "parkinsons": {
+          "precision": 0.7044,
+          "recall": 0.8615,
+          "f1_score": 0.7751,
+          "support": 390
+        },
+        "depression": {
+          "precision": 1.0,
+          "recall": 0.8821,
+          "f1_score": 0.9373,
+          "support": 390
+        }
+      },
+      "healthy_recall_by_dataset": {
+        "alzheimer": {
+          "support": 120,
+          "correct": 48,
+          "recall": 0.4
+        },
+        "parkinson": {
+          "support": 270,
+          "correct": 129,
+          "recall": 0.4778
+        },
+        "modma": {
+          "support": 90,
+          "correct": 90,
+          "recall": 1.0
+        }
+      },
+      "confusion_matrix": [
+        [
+          267,
+          0,
+          72,
+          141,
+          0
+        ],
+        [
+          2,
+          52,
+          3,
+          0,
+          0
+        ],
+        [
+          71,
+          0,
+          109,
+          0,
+          0
+        ],
+        [
+          54,
+          0,
+          0,
+          336,
+          0
+        ],
+        [
+          45,
+          0,
+          1,
+          0,
+          344
+        ]
+      ],
+      "best_alpha": 1000.0,
+      "feature_dim": 128
+    }
+  }
+}
