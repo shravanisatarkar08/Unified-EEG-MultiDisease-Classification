@@ -1,0 +1,24 @@
+{
+  "run_name": "exp14_source_dann",
+  "max_alpha": 0.15,
+  "alpha_schedule": "linear",
+  "domain_loss_weight": 0.1,
+  "lr": 0.0005,
+  "weight_decay": 0.01,
+  "warmup_epochs": 2,
+  "max_epochs": 8,
+  "batch_size": 64,
+  "patience": 4,
+  "seed": 42,
+  "source_sampler": "inverse dataset frequency",
+  "source_weights": {
+    "parkinson": 0.474031746031746,
+    "modma": 0.5721072796934866,
+    "alzheimer": 1.106074074074074,
+    "chbmit": 4.580368098159509,
+    "srm_healthy": 49.77333333333333
+  },
+  "n_train": 7466,
+  "n_val": 1497,
+  "test_accessed": false
+}

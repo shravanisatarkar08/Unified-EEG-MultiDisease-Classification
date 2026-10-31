@@ -1,0 +1,18 @@
+{
+  "experiment_run": false,
+  "decision": "rejected_without_execution",
+  "highest_impact_fix": "pre-inference Pz channel harmonization for the Parkinson's cohort",
+  "reason": "Available cached predictions are post-inference and cached embeddings are post-encoder; neither can produce Pz-harmonized counterfactual validation predictions. Validation-label-based probability adjustment would violate the no-validation-tuning constraint.",
+  "test_split_accessed": false,
+  "baseline_exp12": {
+    "validation_accuracy": 0.7742,
+    "balanced_accuracy": 0.8372,
+    "macro_f1": 0.8085,
+    "healthy_recall_by_cohort": {
+      "alzheimer": 0.1333,
+      "parkinson": 0.4481,
+      "modma": 1.0
+    }
+  },
+  "candidate_metrics": null
+}

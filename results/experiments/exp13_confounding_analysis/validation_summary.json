@@ -1,0 +1,37 @@
+{
+  "benchmark_window_accuracy": 0.7742,
+  "benchmark_balanced_accuracy": 0.8372,
+  "benchmark_macro_f1": 0.8085,
+  "subject_level_majority_accuracy": 0.75,
+  "subject_level_soft_accuracy": 0.75,
+  "disease_subjects_accuracy": 0.96,
+  "healthy_subjects_accuracy": 0.4,
+  "per_class_subject_accuracy": {
+    "healthy": {
+      "n_subjects": 15,
+      "majority_vote_accuracy": 0.4,
+      "soft_vote_accuracy": 0.4
+    },
+    "epilepsy": {
+      "n_subjects": 1,
+      "majority_vote_accuracy": 1.0,
+      "soft_vote_accuracy": 1.0
+    },
+    "alzheimers": {
+      "n_subjects": 6,
+      "majority_vote_accuracy": 1.0,
+      "soft_vote_accuracy": 0.8333
+    },
+    "parkinsons": {
+      "n_subjects": 11,
+      "majority_vote_accuracy": 1.0,
+      "soft_vote_accuracy": 1.0
+    },
+    "depression": {
+      "n_subjects": 7,
+      "majority_vote_accuracy": 0.8571,
+      "soft_vote_accuracy": 1.0
+    }
+  },
+  "theoretical_window_ceiling": 0.8196
+}
