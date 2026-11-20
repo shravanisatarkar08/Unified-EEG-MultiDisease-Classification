@@ -1,263 +1,245 @@
-# Unified Explainable CNN–Transformer Framework for Multi-Disease EEG Classification
+# Transformer-Based Deep Learning Framework for Robust EEG Signal Classification
 
-[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
-[![PyTorch](https://img.shields.io/badge/PyTorch-2.0+-ee4c2c.svg)](https://pytorch.org/)
+[![Python 3.11+](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://python.org)
+[![PyTorch 2.6](https://img.shields.io/badge/PyTorch-2.6-ee4c2c.svg)](https://pytorch.org)
+[![Streamlit](https://img.shields.io/badge/Streamlit-1.65-ff4b4b.svg)](https://streamlit.io)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Streamlit App](https://img.shields.io/badge/Streamlit-Live%20Dashboard-FF4B4B.svg)](http://localhost:8501)
-[![Tests: 84 Passed](https://img.shields.io/badge/Tests-84%20Passed-brightgreen.svg)](test_pipeline.py)
 
-A unified deep learning framework combining an **EEGNet-style CNN spatial-temporal backbone** with a **Multi-Head Self-Attention Transformer Encoder** for robust multi-disease classification and biomarker attribution across five clinical EEG categories:
-1. **Healthy Controls** (`healthy`, Class 0)
-2. **Epilepsy / Seizure EEG** (`epilepsy`, Class 1)
-3. **Alzheimer’s Disease** (`alzheimers`, Class 2)
-4. **Parkinson’s Disease** (`parkinsons`, Class 3)
-5. **Major Depressive Disorder** (`depression`, Class 4)
+> **Unified Explainable CNN–Transformer Framework for Multi-Disease Scalp EEG Classification**
 
-The framework incorporates full end-to-end data harmonization (standard 19-channel 10–20 montage, 256 Hz, 5-second overlapping windows), rigorous **subject-level partitioning with zero data leakage**, balanced loss optimization, **1-D CNN Grad-CAM explainability**, and an interactive Streamlit clinical dashboard.
+A deep learning research system that classifies scalp EEG recordings into five neurological categories using a CNN–Transformer architecture with gradient-based explainability.
 
 ---
 
-## Table of Contents
-- [Architecture](#architecture)
-- [Multi-Cohort Dataset Provenance](#multi-cohort-dataset-provenance)
-- [Real 5-Class Experimental Results](#real-5-class-experimental-results)
-- [Visual Explainability & Biomarker Attribution (Grad-CAM)](#visual-explainability--biomarker-attribution-grad-cam)
-- [Interactive Streamlit Clinical Dashboard](#interactive-streamlit-clinical-dashboard)
-- [Quick Start & Reproduction Commands](#quick-start--reproduction-commands)
-- [Real-Time Classification (RTC) Profile](#real-time-classification-rtc-profile)
-- [Repository Structure](#repository-structure)
-- [Scientific Limitations & Methodology](#scientific-limitations--methodology)
+## Overview
+
+This project implements an end-to-end pipeline for automated EEG classification:
+
+1. **EEG Harmonization** — Standardizes diverse EEG recordings to a common 19-channel, 256 Hz representation
+2. **CNN Feature Extraction** — EEGNet-inspired spatial-temporal convolutional backbone
+3. **Transformer Encoding** — Multi-head self-attention for temporal dependency modeling
+4. **Explainability** — Grad-CAM, input gradient saliency, and attention visualization
+5. **Interactive Dashboard** — Professional Streamlit application for research demonstration
+
+### Classification Categories
+
+| Class | Condition | Data Source |
+|:---:|:---|:---|
+| 0 | Healthy Control | SRM + OpenNeuro ds004504 + ds004584 + NEMAR |
+| 1 | Epilepsy | CHB-MIT Scalp EEG Database |
+| 2 | Alzheimer's Disease | OpenNeuro ds004504 |
+| 3 | Parkinson's Disease | OpenNeuro ds004584 |
+| 4 | Depression (MDD) | NEMAR nm000114 / MODMA |
 
 ---
 
-## Architecture
+## Model Architecture
 
 ```
-Raw Multi-Channel Scalp EEG (EDF / BDF / SET / FDT)
-                     │
-                     ▼
-       Common Preprocessing & Harmonization
-  • 0.5–45.0 Hz Bandpass Filter + 50/60 Hz Notch Filter
-  • Resampled to 256 Hz
-  • Spatial Montage: 19 Standard 10–20 Channels (Fp1, Fp2, F7, F3, Fz, F4, F8, T3, C3, Cz, C4, T4, T5, P3, Pz, P4, T6, O1, O2)
-  • 5-Second Segmentation: [19 Channels × 1,280 Time Samples]
-  • Per-Channel Z-Score Normalization (μ = 0, σ = 1)
-                     │
-                     ▼
-      EEGNet-Style CNN Feature Extractor (EEGFeatureExtractor)
-  • 1D Temporal Convolution across time (1 × 64, F1=16)
-  • Depthwise Spatial Convolution across 19 channels (D=2, F1*D=32)
-  • Separable Convolution + ELU Activation + AvgPool2D (1 × 8)
-  • Feature Projection: [Batch, 19, 1280] ──> [Batch, 40, 64] Tokens
-                     │
-                     ▼
-      Transformer Encoder with CLS Token (EEGTransformerEncoder)
-  • Learnable [CLS] Token prepended: [Batch, 41, 64]
-  • Sinusoidal Positional Encoding
-  • 2-Layer Pre-Norm Transformer Encoder (4 Attention Heads, FF-Dim=128)
-  • Multi-Class Linear Projection Head: [Batch, num_classes=5]
-                     │
-                     ▼
-         Explainable Diagnosis & Attribution
-  • Posterior Probabilities for 5 Classes: [Healthy, Epilepsy, Alzheimer's, Parkinson's, Depression]
-  • True 1-D CNN Grad-CAM Activation Maps over Temporal Waves
-  • Spatial 19-Electrode Gradient Saliency Attributions
+Input: Raw EEG [B, 19, 1280] (19 channels × 5 seconds @ 256 Hz)
+  │
+  ├─ CNN Feature Extractor (EEGNet-inspired)
+  │   ├─ Temporal Conv2d (1→16, kernel 1×64)
+  │   ├─ Depthwise Conv2d (16→32, kernel 19×1)
+  │   ├─ Separable Conv2d (32→32, kernel 1×16)
+  │   └─ Feature Projection → [B, 40, 64]
+  │
+  ├─ Transformer Encoder
+  │   ├─ CLS Token + Sinusoidal Positional Encoding
+  │   ├─ 2× TransformerEncoderLayer (4 heads, 128 FFN, GELU, pre-norm)
+  │   └─ CLS output → [B, 64]
+  │
+  └─ Classification Head
+      └─ LayerNorm → Linear(128) → GELU → Dropout → Linear(5)
+          → [B, 5] logits
 ```
 
-### Computational Specifications
-- **Total Model Parameters**: 81,994 float32 parameters (~354 KB checkpoint size)
-- **CPU Forward Inference Latency**: ~24.8 ms per 5-second window (< 0.5% Real-Time Factor)
-- **Memory Footprint**: < 2.5 MB peak activation memory for single-window inference
+**Total parameters:** ~57,000
 
 ---
 
-## Multi-Cohort Dataset Provenance
+## Evaluation Results
 
-| Disease / Condition | Class ID | Clinical Origin / Accession | Total Windows | Train Split | Validation Split | Test Split (Held-Out) | Split Protocol |
-|:---|:---:|:---|:---:|:---:|:---:|:---:|:---|
-| **Healthy Control** | 0 | SRM Healthy + OpenNeuro `ds004504` Controls + `ds004584` Controls + NEMAR Controls | 4,110 | 3,090 | 480 | 540 | Subject-Level (Zero Overlap) |
-| **Epilepsy** | 1 | CHB-MIT (7 subjects: chb01–05, 07, 08) | 438 | 326 | 57 | 55 | Subject-Level (Zero Overlap) |
-| **Alzheimer's Disease** | 2 | OpenNeuro `ds004504` (AD Patient Cohort) | 1,080 | 720 | 180 | 180 | Subject-Level (Zero Overlap) |
-| **Parkinson's Disease** | 3 | OpenNeuro `ds004584` (PD Patient Cohort) | 3,000 | 2,070 | 390 | 540 | Subject-Level (Zero Overlap) |
-| **Depression (MDD)** | 4 | NEMAR `nm000114` / MODMA (Depression Cohort) | 1,860 | 1,260 | 390 | 210 | Subject-Level (Zero Overlap) |
-| **TOTAL** | - | **Unified Multi-Disease Cohort** | **10,488** | **7,466** | **1,497** | **1,525** | **Strict Zero Subject Leakage** |
+Evaluated on **1,525 held-out test windows** from subjects never seen during training.
+Strict subject-level partitioning with zero subject overlap.
 
----
+| Metric | Score |
+|:---|:---:|
+| **Overall Accuracy** | 82.49% |
+| **Balanced Accuracy** | 86.15% |
+| **Macro F1-Score** | 0.8518 |
+| **Weighted F1-Score** | 0.8271 |
+| **Macro ROC-AUC (OVR)** | 0.9648 |
+| **Cohen's Kappa** | 0.7572 |
 
-## Real 5-Class Experimental Results
+### Per-Class Performance
 
-The unified CNN–Transformer classifier was trained with AdamW optimizer, cosine learning rate scheduling with warmup, and class-weighted CrossEntropy loss to handle cohort balance.
-
-### Quantitative Performance (1,525 Independent Held-Out Test Windows)
-
-| Metric | Score | Clinical / Technical Interpretation |
-|:---|:---:|:---|
-| **Overall Accuracy** | **82.49%** | Multi-class overall correct diagnostic classification rate |
-| **Balanced Accuracy** | **86.15%** | Macro-average of recall across all disease classes |
-| **Macro ROC-AUC (OVR)** | **0.9648** | High discriminative capacity across disease vs control curves |
-| **Macro F1-Score** | **0.8518** | Harmonic mean of precision and recall (unweighted) |
-| **Weighted F1-Score** | **0.8271** | Multi-class support-weighted harmonic mean |
-| **Cohen's Kappa ($\kappa$)** | **0.7572** | Substantial inter-class agreement exceeding chance |
-| **Validation Accuracy** | **76.62%** | Subject-level validation cohort performance |
-
-### Per-Class Performance Breakdown (Held-Out Test Set)
-
-```
-Class                 Precision     Recall   F1-Score    Support
------------------------------------------------------------------
-Healthy                  0.7692     0.7222     0.7450        540
-Epilepsy                 1.0000     1.0000     1.0000         55
-Alzheimer's              0.6226     0.9167     0.7416        180
-Parkinson's              0.9069     0.9019     0.9044        540
-Depression               1.0000     0.7667     0.8679        210
------------------------------------------------------------------
-Macro Average            0.8597     0.8615     0.8518       1525
-Weighted Average         0.8354     0.8249     0.8271       1525
-```
-*\*Note: Epilepsy cohort spans 7 independent subjects (chb01–05, 07, 08; 438 windows). In the subject-level split, chb01 (55 windows) is held out exclusively for the test split; chb07 (57 windows) for validation; and chb02, chb03, chb04, chb05, chb08 (326 windows) for training, maintaining zero subject overlap across splits.*
-
-### Controlled Loss Optimization Experiments (Candidate Evaluation)
-
-To test whether alternative loss formulations could alleviate cross-cohort boundary confusion without test-set leakage, controlled experiments were conducted (`manifest.json` / `manifest.csv`). The validation-winning candidate (`run2_label_smoothing`, validation score 0.8172 vs baseline 0.8157) was evaluated strictly once on the held-out test split (1,525 windows):
-
-| Test Metric | Canonical Baseline (`run0`) | Candidate (`run2_label_smoothing`) | Delta | Outcome |
-| :--- | :---: | :---: | :---: | :--- |
-| **Accuracy** | **82.49%** | 78.49% | -4.00% | Canonical baseline retained |
-| **Balanced Accuracy** | **86.15%** | 84.65% | -1.50% | Canonical baseline retained |
-| **Macro F1-Score** | **0.8518** | 0.8264 | -0.0254 | Canonical baseline retained |
-| **Weighted F1-Score** | **0.8271** | 0.7897 | -0.0374 | Canonical baseline retained |
-| **Cohen's Kappa ($\kappa$)** | **0.7572** | 0.7046 | -0.0526 | Canonical baseline retained |
-| **Macro ROC-AUC (OVR)** | **0.9648** | 0.9548 | -0.0100 | Canonical baseline retained |
-
-*Scientific Takeaway: Label smoothing softened boundary probabilities during training, improving validation calibration, but regressed generalization on unseen subjects by increasing Alzheimer's false positives. `checkpoints/best_model.pt` is confirmed as the canonical release checkpoint.*
+| Class | Precision | Recall | F1-Score | Support |
+|:---|:---:|:---:|:---:|:---:|
+| Healthy | 0.769 | 0.722 | 0.745 | 540 |
+| Epilepsy | 1.000 | 1.000 | 1.000 | 55 |
+| Alzheimer's | 0.623 | 0.917 | 0.742 | 180 |
+| Parkinson's | 0.907 | 0.902 | 0.904 | 540 |
+| Depression | 1.000 | 0.767 | 0.868 | 210 |
 
 ---
 
-## Visual Explainability & Biomarker Attribution (Grad-CAM)
-
-The framework includes true **1-D CNN Grad-CAM** and input-gradient saliency attribution:
-- **Temporal Grad-CAM**: Computes backpropagation gradients through the CNN feature projection layer to reveal which transient waveform phases triggered the prediction.
-- **Electrode Spatial Saliency**: Quantifies attribution across all 19 scalp channels (`Fp1`, `Fp2`, `F7`, `F3`, `Fz`, `F4`, `F8`, `T3`, `C3`, `Cz`, `C4`, `T4`, `T5`, `P3`, `Pz`, `P4`, `T6`, `O1`, `O2`).
-
-Artifacts generated in `results/`:
-- **5-Class Confusion Matrix Heatmap**: [`results/confusion_matrix.png`](results/confusion_matrix.png)
-- **Training & Validation Trajectories**: [`results/training_curves.png`](results/training_curves.png)
-- **Multi-Disease Grad-CAM & Saliency Analysis**: [`results/gradcam_analysis.png`](results/gradcam_analysis.png)
-- **Machine-Readable Metrics**: [`results/metrics.json`](results/metrics.json)
-- **Experimental Summary**: [`results/FINAL_EXPERIMENT_SUMMARY.md`](results/FINAL_EXPERIMENT_SUMMARY.md)
-
----
-
-## Interactive Streamlit Clinical Dashboard
-
-Launch the interactive web demonstration:
-```bash
-streamlit run app/app.py
-```
-
-### Dashboard Capabilities:
-1. **Interactive Signal Viewer**: Visualizes 19-channel EEG signals over 5-second windows.
-2. **5-Class Clinical Predictor**: Loads `checkpoints/best_model.pt` and outputs real-time posterior probabilities.
-3. **Spatio-Temporal Biomarker Attribution**: Overlays gradient saliency attributions to highlight salient electrodes and temporal peak activations.
-4. **Empirical Validation Panel**: Displays test confusion matrix, training loss/accuracy trajectories, and held-out metrics table.
-
----
-
-## Quick Start & Reproduction Commands
-
-### 1. Environment Setup
+## Installation
 
 ```bash
+# Clone the repository
 git clone https://github.com/shravanisatarkar08/Unified-EEG-MultiDisease-Classification.git
 cd Unified-EEG-MultiDisease-Classification
 
-# Activate virtual environment
-.\venv\Scripts\activate
+# Create virtual environment (recommended)
+python -m venv venv
+venv\Scripts\activate      # Windows
+# source venv/bin/activate  # Linux/macOS
 
 # Install dependencies
 pip install -r requirements.txt
 ```
 
-### 2. Build 5-Class Dataset Index
+### Requirements
+
+- Python 3.11+
+- PyTorch 2.6+ (CPU or CUDA)
+- Streamlit 1.30+
+- MNE-Python 1.12+
+- NumPy, Pandas, Matplotlib, SciPy
+
+---
+
+## Usage
+
+### Launch the Dashboard
 
 ```bash
-python scripts/build_new_index.py
+streamlit run app/app.py
 ```
 
-### 3. Run Full 5-Class Training & Evaluation Pipeline
+Opens at **http://localhost:8501** in your browser.
+
+### Supported Upload Formats
+
+| Format | Extension | Notes |
+|:---|:---|:---|
+| European Data Format | `.edf` | Recommended; full channel auto-detection |
+| BioSemi Data Format | `.bdf` | Supported via MNE |
+| EEGLAB Dataset | `.set` | Requires EEGLAB-compatible file |
+| CSV | `.csv` | Columns = channel names (or 19 numeric columns) |
+| NumPy Array | `.npy` | Shape: `[19, 1280]` or `[N, 19, 1280]` |
+
+### Expected EEG Input
+
+- **Channels:** Standard 10-20 montage (19 channels)
+  - `Fp1, Fp2, F7, F3, Fz, F4, F8, T3, C3, Cz, C4, T4, T5, P3, Pz, P4, T6, O1, O2`
+  - 10-10 names (T7, T8, P7, P8) are automatically aliased
+- **Sampling Rate:** Any (auto-resampled to 256 Hz)
+- **Minimum Channels:** 10 of 19 (missing channels zero-padded)
+- **Window Size:** 5 seconds (1,280 samples at 256 Hz)
+
+### Run Tests
 
 ```bash
-python run_new_training.py
-```
-
-### 4. Run Test Suite (84 Passed)
-
-```bash
-python test_pipeline.py
+python -m pytest tests/test_inference_pipeline.py -v
 ```
 
 ---
 
-## Repository Structure
+## Project Structure
 
 ```
 Unified-EEG-MultiDisease-Classification/
-├── run_new_training.py        # Real 5-class CNN-Transformer training, metrics & Grad-CAM pipeline
-├── run_model.py               # CLI runner for quick inference & demonstration
-├── test_pipeline.py           # 84-test validation suite (100% passing)
-├── requirements.txt           # Python dependency manifest
-├── README.md                  # Project documentation & benchmark results
 ├── app/
-│   └── app.py                 # Streamlit interactive 5-class clinical dashboard
-├── checkpoints/
-│   └── best_model.pt          # Best trained PyTorch model checkpoint (76.62% val acc)
-├── results/
-│   ├── confusion_matrix.png   # 5-class normalized test confusion matrix heatmap
-│   ├── training_curves.png    # Loss and accuracy trajectories across epochs
-│   ├── gradcam_analysis.png   # Multi-class Grad-CAM & 19-channel electrode saliency maps
-│   ├── classification_report.csv # Per-class precision, recall, F1-scores
-│   ├── classification_report.txt # Text classification report
-│   ├── metrics.json           # Machine-readable test metrics summary
-│   └── FINAL_EXPERIMENT_SUMMARY.md # Comprehensive experimental research report
+│   └── app.py                    # Streamlit dashboard application
 ├── models/
-│   ├── eeg_cnn.py             # EEGNet-style 1D/2D CNN spatial-temporal feature extractor
-│   ├── transformer.py         # Multi-head self-attention Transformer encoder
-│   └── eeg_classifier.py      # Unified CNN + Transformer 5-class classifier
+│   ├── eeg_cnn.py                # EEGNet-style CNN feature extractor
+│   ├── transformer.py            # Transformer encoder with CLS token
+│   ├── eeg_classifier.py         # Combined CNN-Transformer classifier
+│   ├── spectral_transformer.py   # Spectral features variant
+│   └── eegnet.py                 # Standalone EEGNet baseline
 ├── preprocessing/
-│   ├── config.py              # Standard 10-20 channel montage, sampling rate (256 Hz), window settings
-│   ├── harmonization.py       # Harmonization pipeline (bandpass, notch, 19 channels, z-score)
-│   ├── dataset_preprocessors.py # Dataset-specific preprocessors
-│   └── dataset_split.py       # Subject-level split generator (zero leakage)
-├── scripts/
-│   ├── build_new_index.py     # Deterministic 5-class dataset index generator
-│   └── run_full_preprocessing.py # Batch dataset preprocessing runner
-└── training/
-    ├── dataset.py             # PyTorch EEGDataset with fast direct .npy loading
-    ├── trainer.py             # Training engine with AdamW, cosine LR, early stopping
-    ├── evaluator.py           # Multi-class evaluation metrics & confusion matrix computation
-    └── explainability.py      # True CNN Grad-CAM & input gradient saliency
+│   ├── config.py                 # Pipeline configuration constants
+│   ├── common.py                 # Filtering, resampling, normalization
+│   ├── harmonize.py              # EEG harmonization pipeline
+│   ├── segment.py                # Windowing and segmentation
+│   └── datasets/                 # Dataset-specific preprocessors
+├── training/
+│   ├── trainer.py                # Training loop with cosine schedule
+│   ├── evaluator.py              # Evaluation and metrics computation
+│   ├── dataset.py                # PyTorch dataset with lazy loading
+│   ├── explainability.py         # Grad-CAM, saliency, attention
+│   └── feature_extraction.py     # CNN feature extraction utilities
+├── results/
+│   ├── metrics.json              # Complete evaluation metrics
+│   ├── confusion_matrix.png      # Test set confusion matrix
+│   ├── training_curves.png       # Loss/accuracy trajectories
+│   ├── classification_report.csv # Per-class precision/recall/F1
+│   ├── gradcam_analysis.png      # Multi-disease Grad-CAM composite
+│   ├── gradcam/                  # Individual class Grad-CAM images
+│   └── experiments/              # Loss function experiment results
+├── checkpoints/
+│   └── best_model.pt             # Trained model checkpoint (~1.1 MB)
+├── datasets/
+│   └── metadata/                 # Dataset inventory and index files
+├── tests/
+│   └── test_inference_pipeline.py # 26 comprehensive tests
+├── scripts/                      # Training and analysis scripts
+├── requirements.txt              # Python dependencies
+├── DEMO_GUIDE.md                 # Thesis presentation walkthrough
+└── README.md                     # This file
 ```
 
 ---
 
-## Scientific Limitations & Methodology
+## Dataset
 
-1. **Epilepsy Cohort Scope**: CHB-MIT scalp EEG spans 7 independent subjects (438 windows). In the subject-level split, `chb01` (55 windows) is held out exclusively for testing, `chb07` (57 windows) for validation, and `chb02, chb03, chb04, chb05, chb08` (326 windows) for training. While this provides independent subject evaluation, testing on the full CHB-MIT cohort (`chb09`–`chb24`) remains recommended.
-2. **Healthy Reference Distribution**: Healthy control data is drawn from four diverse clinical origins (SRM, ds004504, ds004584, NEMAR), strengthening the normative EEG baseline across age and recording hardware variations.
-3. **FTD Exclusion**: Frontotemporal Dementia cases in ds004504 were strictly excluded to ensure clean diagnostic separation between Alzheimer's Disease and healthy aging controls.
-4. **Subject Leakage Guarantee**: Zero subject overlap exists across training, validation, and test splits (`train_subjects ∩ val_subjects = ∅`, `train_subjects ∩ test_subjects = ∅`, `val_subjects ∩ test_subjects = ∅`).
-5. **Benchmark Demonstration Samples**: The representative 5-class demonstration EEG windows provided in the interactive dashboard and CLI are intended solely for technical pipeline verification and interface testing. They do not constitute independent generalization evidence or clinical diagnostic claims.
+**Total:** 10,488 harmonized windows across 5 classes
+
+| Split | Windows | Protocol |
+|:---|:---:|:---|
+| Training | 7,466 | Subject-level, balanced class weighting |
+| Validation | 1,497 | Subject-level, early stopping criterion |
+| Test | 1,525 | Held-out subjects, final evaluation |
+
+All recordings harmonized to: 19-channel 10-20 montage, 256 Hz, 5-second windows, 50% overlap, z-score normalized.
+
+---
+
+## Known Limitations
+
+1. **Epilepsy test cohort:** Test partition contains 55 windows from one held-out subject (CHB-MIT chb01)
+2. **Multi-center confounding:** Acquisition hardware differences across cohorts contribute to classification signals
+3. **Clinical scope:** Research prototype; not validated for clinical diagnosis
+4. **Model capacity:** Lightweight architecture (~57K parameters) designed for efficiency
+5. **Healthy reference:** Drawn from 4 diverse sources introducing acquisition heterogeneity
 
 ---
 
 ## Citation
 
-```bibtex
-@article{unified_eeg_classification_2026,
-  title={Unified Explainable CNN--Transformer Framework for Multi-Disease EEG Classification},
-  author={Satarkar, Shravani and Kale, Arpit},
-  journal={GitHub Repository},
+If you use this work, please cite:
+
+```
+@thesis{satarkar2026eeg,
+  title={Transformer-Based Deep Learning Framework for Robust EEG Signal Classification},
+  author={Satarkar, Shravani},
   year={2026},
-  url={https://github.com/shravanisatarkar08/Unified-EEG-MultiDisease-Classification}
+  type={Thesis}
 }
 ```
+
+---
+
+## Disclaimer
+
+> **⚠️ Research Prototype:** This software is developed for academic research and computational
+> neuroscience investigation. It is **not** approved as a medical device, is **not** certified
+> for clinical diagnosis, and must **not** be used as a substitute for professional medical evaluation.
+
+---
+
+## License
+
+This project is licensed under the MIT License — see [LICENSE](LICENSE) for details.

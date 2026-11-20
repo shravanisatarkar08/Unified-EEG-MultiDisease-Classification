@@ -236,10 +236,12 @@ datasets/processed/
 .ipynb_checkpoints/
 tempCodeRunnerFile.*
 
-# Generated features, checkpoints, logs
+# Generated features, logs
 datasets/features/
-checkpoints/
 runs/
-*.pt
 results/experiments/**/*.pt
 scratch/
+
+# Checkpoint files (exclude large training artifacts, keep best model)
+checkpoints/*.pt
+!checkpoints/best_model.pt
